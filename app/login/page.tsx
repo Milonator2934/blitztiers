@@ -11,21 +11,6 @@ const trustedDeviceKey = (userId: string) => `blitztiers-trusted-device-${userId
 const otpCooldownKey = (email: string) => `blitztiers-otp-cooldown-${email.toLowerCase()}`
 const otpCooldownSeconds = 60
 
-async function getResponseError(response: Response) {
-  const text = await response.text()
-
-  if (!text) {
-    return 'Something went wrong. Please try again.'
-  }
-
-  try {
-    const data = JSON.parse(text) as { error?: string }
-    return data.error || text
-  } catch {
-    return text
-  }
-}
-
 async function getDeviceFingerprint() {
   const response = await fetch('/api/client-fingerprint', { cache: 'no-store' })
   const { ip, userAgent } = await response.json()
@@ -154,17 +139,16 @@ export default function LoginPage() {
     }
 
     setLoading(true)
-    const response = await fetch('/api/send-otp', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    const { error: signUpError } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: true,
       },
-      body: JSON.stringify({ email }),
     })
     setLoading(false)
 
-    if (!response.ok) {
-      showAuthError(await getResponseError(response))
+    if (signUpError) {
+      showAuthError(signUpError.message)
       return
     }
 
@@ -183,32 +167,24 @@ export default function LoginPage() {
     }
 
     setLoading(true)
-    const response = await fetch('/api/verify-otp', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email,
-        code: cleanCode,
-        password,
-      }),
-    })
-
-    if (!response.ok) {
-      setLoading(false)
-      setError(await getResponseError(response))
-      return
-    }
-
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({
+    const { data, error: verifyError } = await supabase.auth.verifyOtp({
       email,
-      password,
+      token: cleanCode,
+      type: 'email',
     })
     setLoading(false)
 
-    if (signInError) {
-      setError(signInError.message)
+    if (verifyError) {
+      setError(verifyError.message)
+      return
+    }
+
+    const { error: passwordError } = await supabase.auth.updateUser({
+      password,
+    })
+
+    if (passwordError) {
+      setError(passwordError.message)
       return
     }
 
