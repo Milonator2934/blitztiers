@@ -139,15 +139,12 @@ export default function LoginPage() {
     }
 
     setLoading(true)
-    const res = await fetch("/api/send-otp", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    email,
-  }),
-})
+    const { error: signUpError } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: true,
+      },
+    })
     setLoading(false)
 
     if (signUpError) {
@@ -155,9 +152,9 @@ export default function LoginPage() {
       return
     }
 
-    startOtpCooldown()
     setSignupStep('verify')
     setMessage('Check your email for the 6 digit verification code.')
+    startOtpCooldown()
   }
 
   async function verifyEmailCode() {

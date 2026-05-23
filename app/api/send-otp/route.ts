@@ -2,18 +2,24 @@ import { NextResponse } from "next/server"
 import { Resend } from "resend"
 import { createClient } from "@supabase/supabase-js"
 
-const resend = new Resend(process.env.RESEND_API_KEY!)
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 function generateCode() {
   return Math.floor(100000 + Math.random() * 900000).toString()
 }
 
 export async function POST(req: Request) {
+  const resendApiKey = process.env.RESEND_API_KEY
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!resendApiKey || !supabaseUrl || !serviceRoleKey) {
+    return NextResponse.json(
+      { error: "Email verification is not configured." },
+      { status: 500 }
+    )
+  }
+
+  const resend = new Resend(resendApiKey)
+  const supabase = createClient(supabaseUrl, serviceRoleKey)
   const { email, userId } = await req.json()
 
   const code = generateCode()
