@@ -20,7 +20,12 @@ export async function POST(req: Request) {
 
   const resend = new Resend(resendApiKey)
   const supabase = createClient(supabaseUrl, serviceRoleKey)
-  const { email, userId } = await req.json()
+  const { email } = await req.json()
+  const cleanEmail = typeof email === "string" ? email.trim().toLowerCase() : ""
+
+  if (!cleanEmail) {
+    return NextResponse.json({ error: "Email is required." }, { status: 400 })
+  }
 
   const code = generateCode()
 
@@ -28,15 +33,14 @@ export async function POST(req: Request) {
   expires.setMinutes(expires.getMinutes() + 10)
 
   await supabase.from("email_verifications").insert({
-    email,
-    user_id: userId,
+    email: cleanEmail,
     code,
     expires_at: expires.toISOString(),
   })
 
   await resend.emails.send({
-    from: "BlitzTiers <noreply@yourdomain.com>",
-    to: email,
+    from: process.env.RESEND_FROM_EMAIL || "BlitzTiers <noreply@yourdomain.com>",
+    to: cleanEmail,
     subject: "Your BlitzTiers Code",
     html: `
       <h2>Your verification code</h2>
