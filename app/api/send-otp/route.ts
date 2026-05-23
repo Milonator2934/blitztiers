@@ -32,13 +32,17 @@ export async function POST(req: Request) {
   const expires = new Date()
   expires.setMinutes(expires.getMinutes() + 10)
 
-  await supabase.from("email_verifications").insert({
+  const { error: insertError } = await supabase.from("email_verifications").insert({
     email: cleanEmail,
     code,
     expires_at: expires.toISOString(),
   })
 
-  await resend.emails.send({
+  if (insertError) {
+    return NextResponse.json({ error: insertError.message }, { status: 500 })
+  }
+
+  const { error: sendError } = await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL || "BlitzTiers <noreply@yourdomain.com>",
     to: cleanEmail,
     subject: "Your BlitzTiers Code",
@@ -48,6 +52,10 @@ export async function POST(req: Request) {
       <p>Expires in 10 minutes</p>
     `,
   })
+
+  if (sendError) {
+    return NextResponse.json({ error: sendError.message }, { status: 500 })
+  }
 
   return NextResponse.json({ success: true })
 }
