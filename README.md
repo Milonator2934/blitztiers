@@ -34,7 +34,7 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 ## Email Verification
 
 Signup uses Supabase email OTP verification. In the Supabase dashboard, update
-the email template so users receive the six digit code directly:
+the email template so users receive the eight digit code directly:
 
 1. Go to Authentication > Email Templates.
 2. Edit the Magic Link / OTP template.

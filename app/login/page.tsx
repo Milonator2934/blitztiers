@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 
 type SignupStep = 'credentials' | 'verify' | 'username' | 'complete'
 
+const otpCodeLength = 8
 const trustedDeviceKey = (userId: string) => `blitztiers-trusted-device-${userId}`
 const otpCooldownKey = (email: string) => `blitztiers-otp-cooldown-${email.toLowerCase()}`
 const otpCooldownSeconds = 60
@@ -49,7 +50,7 @@ export default function LoginPage() {
   const [otpCooldownRemaining, setOtpCooldownRemaining] = useState(0)
 
   const cleanCode = useMemo(
-    () => verificationCode.replace(/\D/g, '').slice(0, 6),
+    () => verificationCode.replace(/\D/g, '').slice(0, otpCodeLength),
     [verificationCode]
   )
 
@@ -153,7 +154,7 @@ export default function LoginPage() {
     }
 
     setSignupStep('verify')
-    setMessage('Check your email for the 6 digit verification code.')
+    setMessage(`Check your email for the ${otpCodeLength} digit verification code.`)
     startOtpCooldown()
   }
 
@@ -161,8 +162,8 @@ export default function LoginPage() {
     setError('')
     setMessage('')
 
-    if (cleanCode.length !== 6) {
-      setError('Enter the 6 digit code from your email.')
+    if (cleanCode.length !== otpCodeLength) {
+      setError(`Enter the ${otpCodeLength} digit code from your email.`)
       return
     }
 
@@ -363,7 +364,7 @@ export default function LoginPage() {
                 <input
                   inputMode="numeric"
                   className="w-full rounded bg-zinc-900 p-3 text-center text-2xl font-black tracking-[0.3em] outline-none ring-1 ring-zinc-800 focus:ring-blue-500"
-                  placeholder="000000"
+                  placeholder="00000000"
                   value={cleanCode}
                   onChange={(event) => setVerificationCode(event.target.value)}
                 />
