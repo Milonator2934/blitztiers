@@ -7,32 +7,25 @@ const supabase = createClient(
 )
 
 export async function POST(req: Request) {
-  const { userId, code } = await req.json()
+  const { email, code } = await req.json()
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("email_verifications")
     .select("*")
-    .eq("user_id", userId)
+    .eq("email", email)
     .eq("code", code)
     .single()
 
-  if (!data) {
-    return NextResponse.json({ success: false })
+  if (error || !data) {
+    return NextResponse.json({ error: "Invalid code" }, { status: 400 })
   }
 
-  const now = new Date()
-  if (new Date(data.expires_at) < now) {
-    return NextResponse.json({ success: false, reason: "expired" })
+  if (new Date(data.expires_at) < new Date()) {
+    return NextResponse.json({ error: "Code expired" }, { status: 400 })
   }
 
-  await supabase.auth.admin.updateUserById(userId, {
-    email_confirm: true
+  return NextResponse.json({
+    success: true,
+    userId: data.user_id,
   })
-
-  await supabase
-    .from("email_verifications")
-    .delete()
-    .eq("user_id", userId)
-
-  return NextResponse.json({ success: true })
 }
