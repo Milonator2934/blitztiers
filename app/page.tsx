@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { AdminLink, AuthNav } from '@/app/AuthNav'
+import { BrandLogo } from '@/app/BrandLogo'
 import { categories } from '@/lib/categories'
 import { getLeaderboardCount } from '@/lib/leaderboards'
 
@@ -21,9 +22,7 @@ export default async function HomePage() {
     <main className="min-h-screen bg-black text-white">
       <nav className="flex flex-col gap-4 border-b border-zinc-800 p-4 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold text-blue-500 sm:text-3xl">
-            BlitzTiers
-          </h1>
+          <BrandLogo />
           <AdminLink />
         </div>
 

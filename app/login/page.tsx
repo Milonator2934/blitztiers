@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { CheckCircle2, Eye, EyeOff, KeyRound, LogIn, Mail, ShieldCheck, User } from 'lucide-react'
 import { AdminLink } from '@/app/AuthNav'
+import { BrandLogo } from '@/app/BrandLogo'
 import { supabase } from '@/lib/supabase'
 
 type SignupStep = 'credentials' | 'verify' | 'username' | 'complete'
@@ -339,9 +339,7 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-black px-4 py-6 text-white sm:py-10">
       <div className="w-full max-w-md rounded-lg border border-zinc-800 bg-zinc-950 p-5 shadow-2xl shadow-blue-950/20 sm:p-6">
         <div className="flex flex-wrap items-center gap-3">
-          <Link href="/" className="text-sm font-bold text-blue-400 hover:text-blue-300">
-            BlitzTiers
-          </Link>
+          <BrandLogo compact />
           <AdminLink />
         </div>
         <h1 className="mt-3 text-2xl font-black sm:text-3xl">Login or Create Account</h1>

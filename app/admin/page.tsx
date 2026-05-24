@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, ShieldCheck, Trash2, UserPlus } from 'lucide-react'
+import { BrandLogo } from '@/app/BrandLogo'
 import { categories, type CategoryKey, getCategory } from '@/lib/categories'
 import { supabase } from '@/lib/supabase'
 
@@ -397,7 +398,8 @@ export default function AdminPage() {
     <main className="min-h-screen bg-black p-4 text-white sm:p-6 md:p-10">
       <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-3xl font-black sm:text-4xl md:text-5xl">Admin Dashboard</h1>
+          <BrandLogo compact />
+          <h1 className="mt-3 text-3xl font-black sm:text-4xl md:text-5xl">Admin Dashboard</h1>
           <p className="mt-3 text-zinc-400">
             Signed in as {currentProfile?.username}. {isSuperAdmin ? 'Super-admin access enabled.' : 'Admin access enabled.'}
           </p>

@@ -1,6 +1,7 @@
-import Link from 'next/link'
 import { AdminLink, AuthNav } from '@/app/AuthNav'
+import { BrandLogo } from '@/app/BrandLogo'
 import { categories } from '@/lib/categories'
+import { getRankBadgeClass } from '@/lib/rankStyles'
 import { supabase } from '@/lib/supabase'
 
 export type LeaderboardConfig = {
@@ -112,9 +113,7 @@ export async function LeaderboardPage({ config }: { config: LeaderboardConfig })
       <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-3">
-            <Link href="/" className="text-sm font-bold text-blue-400 hover:text-blue-300">
-              BlitzTiers
-            </Link>
+            <BrandLogo compact />
             <AdminLink />
           </div>
           <h1 className="mt-3 text-3xl font-black sm:text-4xl md:text-5xl">{config.title}</h1>
@@ -144,7 +143,11 @@ export async function LeaderboardPage({ config }: { config: LeaderboardConfig })
             ) : (
               players.map((player, index) => (
                 <tr key={`${config.table}-${index}`} className="border-b border-zinc-800 last:border-b-0">
-                  <td className="p-4 font-bold text-zinc-300">#{index + 1}</td>
+                  <td className="p-4">
+                    <span className={`inline-flex h-8 min-w-12 items-center justify-center rounded border px-3 font-black ${getRankBadgeClass(index)}`}>
+                      #{index + 1}
+                    </span>
+                  </td>
                   <td className="p-4">{getUsername(player.profiles)}</td>
                   <td className="p-4">{player.elo}</td>
                 </tr>

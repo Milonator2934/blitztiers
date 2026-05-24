@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Send, UserCheck } from 'lucide-react'
 import { AdminLink, AuthNav } from '@/app/AuthNav'
+import { BrandLogo } from '@/app/BrandLogo'
 import { categories, type CategoryKey } from '@/lib/categories'
 import { supabase } from '@/lib/supabase'
 
@@ -160,9 +161,7 @@ export default function GetRankedPage() {
       <nav className="border-b border-zinc-800 p-4 sm:p-6">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-3">
-            <Link href="/" className="text-2xl font-bold text-blue-500 sm:text-3xl">
-              BlitzTiers
-            </Link>
+            <BrandLogo />
             <AdminLink />
           </div>
 
