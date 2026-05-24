@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { CheckCircle2, Eye, EyeOff, KeyRound, LogIn, Mail, ShieldCheck, User } from 'lucide-react'
+import { AdminLink } from '@/app/AuthNav'
 import { supabase } from '@/lib/supabase'
 
 type SignupStep = 'credentials' | 'verify' | 'username' | 'complete'
@@ -316,12 +317,15 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-black px-4 py-10 text-white flex items-center justify-center">
-      <div className="w-full max-w-md rounded-lg border border-zinc-800 bg-zinc-950 p-6 shadow-2xl shadow-blue-950/20">
-        <Link href="/" className="text-sm font-bold text-blue-400 hover:text-blue-300">
-          BlitzTiers
-        </Link>
-        <h1 className="mt-3 text-3xl font-black">Login or Create Account</h1>
+    <main className="flex min-h-screen items-center justify-center bg-black px-4 py-6 text-white sm:py-10">
+      <div className="w-full max-w-md rounded-lg border border-zinc-800 bg-zinc-950 p-5 shadow-2xl shadow-blue-950/20 sm:p-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <Link href="/" className="text-sm font-bold text-blue-400 hover:text-blue-300">
+            BlitzTiers
+          </Link>
+          <AdminLink />
+        </div>
+        <h1 className="mt-3 text-2xl font-black sm:text-3xl">Login or Create Account</h1>
 
         <div className="mt-6 space-y-4">
           <label className="block">
@@ -369,7 +373,7 @@ export default function LoginPage() {
                 </span>
                 <input
                   inputMode="numeric"
-                  className="w-full rounded bg-zinc-900 p-3 text-center text-2xl font-black tracking-[0.3em] outline-none ring-1 ring-zinc-800 focus:ring-blue-500"
+                  className="w-full rounded bg-zinc-900 p-3 text-center text-xl font-black tracking-[0.2em] outline-none ring-1 ring-zinc-800 focus:ring-blue-500 sm:text-2xl sm:tracking-[0.3em]"
                   placeholder="00000000"
                   value={cleanCode}
                   onChange={(event) => setVerificationCode(event.target.value)}

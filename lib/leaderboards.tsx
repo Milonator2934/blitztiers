@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { AdminLink, AuthNav } from '@/app/AuthNav'
 import { categories } from '@/lib/categories'
 import { supabase } from '@/lib/supabase'
 
@@ -105,28 +106,24 @@ export async function LeaderboardPage({ config }: { config: LeaderboardConfig })
   const players = await getLeaderboardPlayers(config.table)
 
   return (
-    <main className="min-h-screen bg-black text-white p-6 md:p-10">
+    <main className="min-h-screen bg-black p-4 text-white sm:p-6 md:p-10">
       <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <Link href="/" className="text-sm font-bold text-blue-400 hover:text-blue-300">
-            BlitzTiers
-          </Link>
-          <h1 className="mt-3 text-4xl font-black md:text-5xl">{config.title}</h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link href="/" className="text-sm font-bold text-blue-400 hover:text-blue-300">
+              BlitzTiers
+            </Link>
+            <AdminLink />
+          </div>
+          <h1 className="mt-3 text-3xl font-black sm:text-4xl md:text-5xl">{config.title}</h1>
           <p className="mt-3 max-w-2xl text-zinc-400">{config.description}</p>
         </div>
 
-        <nav className="flex flex-wrap gap-3 text-sm font-bold text-zinc-300">
-          <Link href="/overall" className="hover:text-white">Overall</Link>
-          <Link href="/accuracy" className="hover:text-white">Accuracy</Link>
-          <Link href="/passing" className="hover:text-white">Passing</Link>
-          <Link href="/goalkeeping" className="hover:text-white">Goalkeeping</Link>
-          <Link href="/power" className="hover:text-white">Shot Power</Link>
-          <Link href="/info" className="hover:text-white">Info</Link>
-        </nav>
+        <AuthNav />
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-zinc-800">
-        <table className="w-full border-collapse">
+      <div className="overflow-x-auto rounded-lg border border-zinc-800">
+        <table className="w-full min-w-[420px] border-collapse">
           <thead>
             <tr className="bg-zinc-900">
               <th className="p-4 text-left">Rank</th>

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { AdminLink, AuthNav } from '@/app/AuthNav'
 import { categories } from '@/lib/categories'
 import { getOverallLeaderboardPlayers } from '@/lib/leaderboards'
 
@@ -8,25 +9,22 @@ export default async function OverallPage() {
   const players = await getOverallLeaderboardPlayers()
 
   return (
-    <main className="min-h-screen bg-black text-white p-6 md:p-10">
+    <main className="min-h-screen bg-black p-4 text-white sm:p-6 md:p-10">
       <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <Link href="/" className="text-sm font-bold text-blue-400 hover:text-blue-300">
-            BlitzTiers
-          </Link>
-          <h1 className="mt-3 text-4xl font-black md:text-5xl">Overall Rankings</h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link href="/" className="text-sm font-bold text-blue-400 hover:text-blue-300">
+              BlitzTiers
+            </Link>
+            <AdminLink />
+          </div>
+          <h1 className="mt-3 text-3xl font-black sm:text-4xl md:text-5xl">Overall Rankings</h1>
           <p className="mt-3 max-w-2xl text-zinc-400">
             Total rank based on each player&apos;s average ELO across ranked categories.
           </p>
         </div>
 
-        <nav className="flex flex-wrap gap-3 text-sm font-bold text-zinc-300">
-          <Link href="/accuracy" className="hover:text-white">Accuracy</Link>
-          <Link href="/passing" className="hover:text-white">Passing</Link>
-          <Link href="/goalkeeping" className="hover:text-white">Goalkeeping</Link>
-          <Link href="/power" className="hover:text-white">Shot Power</Link>
-          <Link href="/info" className="hover:text-white">Info</Link>
-        </nav>
+        <AuthNav />
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-zinc-800">

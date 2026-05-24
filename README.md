@@ -44,6 +44,24 @@ the email template so users receive the eight digit code directly:
 Also set the Supabase Site URL to `https://blitztiers.com` and add any preview
 URLs you use as allowed redirect URLs.
 
+## Moderation Requests
+
+The Get Ranked page stores requests in Supabase. Create this table before using
+the page in production:
+
+```sql
+create table if not exists moderation_requests (
+  id uuid primary key default gen_random_uuid(),
+  requester_id uuid not null references profiles(id) on delete cascade,
+  category text not null check (category in ('accuracy', 'goalkeeping', 'passing', 'power')),
+  code_type text not null check (code_type in ('calibration', 'clubhouse', 'golf club', 'freerunners', 'girls who drift')),
+  code_number integer not null check (code_number between 1 and 24),
+  requested_admin_id uuid references profiles(id) on delete set null,
+  status text not null default 'pending',
+  created_at timestamptz not null default now()
+);
+```
+
 ## Deploy on BlitzTiers.com
 
 The recommended deployment target is Vercel because this is a Next.js app.
@@ -60,3 +78,5 @@ The recommended deployment target is Vercel because this is a Next.js app.
 Domain names are case-insensitive, so `BlitzTiers.com` and `blitztiers.com` are the same domain.
 
 Only someone with access to the domain registrar and hosting account can complete the DNS connection.
+
+MAKE THE POWER CALCULATION ALWAYS MAKE MOVING SHOTS WORTH LESS

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { AdminLink, AuthNav } from '@/app/AuthNav'
 
 const measurements = [
   {
@@ -51,23 +52,23 @@ const measurements = [
 export default function InfoPage() {
   return (
     <main className="min-h-screen bg-black text-white">
-      <nav className="border-b border-zinc-800 p-6">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
-          <Link href="/" className="text-3xl font-bold text-blue-500">
-            BlitzTiers
-          </Link>
-
-          <div className="flex flex-wrap items-center gap-4 text-sm font-bold text-zinc-300">
-            <Link href="/overall" className="hover:text-white">Rankings</Link>
-            <Link href="/login" className="hover:text-white">Login</Link>
+      <nav className="border-b border-zinc-800 p-4 sm:p-6">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            <Link href="/" className="text-2xl font-bold text-blue-500 sm:text-3xl">
+              BlitzTiers
+            </Link>
+            <AdminLink />
           </div>
+
+          <AuthNav />
         </div>
       </nav>
 
-      <section className="mx-auto max-w-6xl px-6 py-14">
+      <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="max-w-3xl">
-          <h1 className="text-4xl font-black md:text-5xl">How Rankings Are Measured</h1>
-          <p className="mt-4 text-lg text-zinc-400">
+          <h1 className="text-3xl font-black sm:text-4xl md:text-5xl">How Rankings Are Measured</h1>
+          <p className="mt-4 text-base text-zinc-400 sm:text-lg">
             Each category turns a simple skill test into an ELO score. Higher scores mean
             stronger performance in that specific part of DriftBlitz.
           </p>
@@ -77,9 +78,9 @@ export default function InfoPage() {
           {measurements.map((measurement) => (
             <article
               key={measurement.title}
-              className="rounded-lg border border-zinc-800 bg-zinc-950 p-6"
+              className="rounded-lg border border-zinc-800 bg-zinc-950 p-5 sm:p-6"
             >
-              <h2 className="text-2xl font-black">{measurement.title}</h2>
+              <h2 className="text-xl font-black sm:text-2xl">{measurement.title}</h2>
               <p className="mt-3 text-zinc-300">{measurement.summary}</p>
 
               <ul className="mt-4 space-y-2 text-sm text-zinc-400">

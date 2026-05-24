@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { ShieldCheck, Trash2, UserPlus } from 'lucide-react'
+import { CheckCircle2, ShieldCheck, Trash2, UserPlus } from 'lucide-react'
 import { categories, type CategoryKey, getCategory } from '@/lib/categories'
 import { supabase } from '@/lib/supabase'
 
@@ -12,6 +12,17 @@ type Player = {
 }
 
 type ActionMode = 'add' | 'remove'
+
+type ModerationRequest = {
+  id: string
+  requester_id: string
+  category: CategoryKey
+  code_type: string
+  code_number: number
+  requested_admin_id?: string | null
+  status: string
+  created_at?: string | null
+}
 
 const scoreOwnerColumns = ['id', 'profile_id', 'player_id']
 
@@ -70,6 +81,8 @@ export default function AdminPage() {
   const [scoreValues, setScoreValues] = useState<Record<string, string>>({})
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [requestError, setRequestError] = useState('')
+  const [moderationRequests, setModerationRequests] = useState<ModerationRequest[]>([])
   const [loading, setLoading] = useState(false)
 
   const selectedCategory = getCategory(categoryKey)
@@ -117,9 +130,16 @@ export default function AdminPage() {
         .select('id, username, is_admin')
         .order('username', { ascending: true })
 
+      const { data: requests, error: requestsError } = await supabase
+        .from('moderation_requests')
+        .select('id, requester_id, category, code_type, code_number, requested_admin_id, status, created_at')
+        .order('created_at', { ascending: false })
+
       if (!ignore) {
         setCurrentProfile(profile || null)
         setPlayers(allPlayers || [])
+        setModerationRequests((requests || []) as ModerationRequest[])
+        setRequestError(requestsError?.message || '')
         setSelectedPlayerId(allPlayers?.[0]?.id || '')
         setSelectedAdminId(allPlayers?.[0]?.id || '')
         setCheckingAccess(false)
@@ -244,9 +264,42 @@ export default function AdminPage() {
     setMessage('User added as an admin.')
   }
 
+  async function completeModerationRequest(requestId: string) {
+    setError('')
+    setMessage('')
+
+    if (!isAdmin) {
+      setError('You do not have access to this admin action.')
+      return
+    }
+
+    setLoading(true)
+    const { error: updateError } = await supabase
+      .from('moderation_requests')
+      .update({ status: 'completed' })
+      .eq('id', requestId)
+    setLoading(false)
+
+    if (updateError) {
+      setError(updateError.message)
+      return
+    }
+
+    setModerationRequests((current) =>
+      current.map((request) =>
+        request.id === requestId ? { ...request, status: 'completed' } : request
+      )
+    )
+    setMessage('Moderation request marked complete.')
+  }
+
+  function getPlayerName(playerId?: string | null) {
+    return players.find((player) => player.id === playerId)?.username || 'Unknown player'
+  }
+
   if (checkingAccess) {
     return (
-      <main className="min-h-screen bg-black p-10 text-white">
+      <main className="min-h-screen bg-black p-4 text-white sm:p-10">
         <p className="text-zinc-400">Checking admin access...</p>
       </main>
     )
@@ -254,8 +307,8 @@ export default function AdminPage() {
 
   if (!isAdmin) {
     return (
-      <main className="min-h-screen bg-black p-10 text-white">
-        <h1 className="text-5xl font-bold mb-4">Admin Dashboard</h1>
+      <main className="min-h-screen bg-black p-4 text-white sm:p-10">
+        <h1 className="mb-4 text-3xl font-bold sm:text-5xl">Admin Dashboard</h1>
         <p className="max-w-xl rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-200">
           You do not have access to the admin panel. Only IGNORANCE and users added as admins can view this page.
         </p>
@@ -264,10 +317,10 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-black text-white p-6 md:p-10">
+    <main className="min-h-screen bg-black p-4 text-white sm:p-6 md:p-10">
       <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-4xl font-black md:text-5xl">Admin Dashboard</h1>
+          <h1 className="text-3xl font-black sm:text-4xl md:text-5xl">Admin Dashboard</h1>
           <p className="mt-3 text-zinc-400">
             Signed in as {currentProfile?.username}. {isSuperAdmin ? 'Super-admin access enabled.' : 'Admin access enabled.'}
           </p>
@@ -275,8 +328,8 @@ export default function AdminPage() {
       </div>
 
       <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-6">
-          <h2 className="mb-5 flex items-center gap-2 text-2xl font-bold">
+        <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-5 sm:p-6">
+          <h2 className="mb-5 flex items-center gap-2 text-xl font-bold sm:text-2xl">
             <ShieldCheck size={22} /> Category Rankings
           </h2>
 
@@ -371,47 +424,99 @@ export default function AdminPage() {
           </button>
         </div>
 
-        <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-6">
-          <h2 className="mb-5 text-2xl font-bold">Admin Access</h2>
+        <div className="space-y-6">
+          <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-5 sm:p-6">
+            <h2 className="mb-5 text-xl font-bold sm:text-2xl">Moderation Requests</h2>
 
-          {isSuperAdmin ? (
-            <div className="space-y-4">
-              <label className="block">
-                <span className="mb-2 block text-sm font-bold text-zinc-300">Search user</span>
-                <input
-                  placeholder="Search username"
-                  className="w-full rounded bg-zinc-900 p-3 outline-none ring-1 ring-zinc-800 focus:ring-blue-500"
-                  value={adminSearch}
-                  onChange={(event) => setAdminSearch(event.target.value)}
-                />
-              </label>
+            {requestError ? (
+              <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">
+                Could not load requests: {requestError}
+              </p>
+            ) : moderationRequests.length === 0 ? (
+              <p className="text-zinc-400">No moderation requests yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {moderationRequests.map((request) => {
+                  const requestedAdmin = request.requested_admin_id
+                    ? getPlayerName(request.requested_admin_id)
+                    : 'Any admin'
 
-              <label className="block">
-                <span className="mb-2 block text-sm font-bold text-zinc-300">User</span>
-                <select
-                  className="w-full rounded bg-zinc-900 p-3 outline-none ring-1 ring-zinc-800 focus:ring-blue-500"
-                  value={selectedAdminId}
-                  onChange={(event) => setSelectedAdminId(event.target.value)}
+                  return (
+                    <article key={request.id} className="rounded-lg bg-zinc-900 p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="font-bold">{getPlayerName(request.requester_id)}</p>
+                          <p className="mt-1 text-sm text-zinc-300">
+                            {getCategory(request.category).shortLabel} - {request.code_type} #{request.code_number}
+                          </p>
+                          <p className="mt-1 text-xs text-zinc-500">
+                            Admin: {requestedAdmin}
+                          </p>
+                        </div>
+
+                        <span className="rounded bg-zinc-800 px-2.5 py-1 text-xs font-bold uppercase text-zinc-300">
+                          {request.status}
+                        </span>
+                      </div>
+
+                      {request.status !== 'completed' && (
+                        <button
+                          onClick={() => completeModerationRequest(request.id)}
+                          disabled={loading}
+                          className="mt-4 flex w-full items-center justify-center gap-2 rounded bg-blue-600 p-2.5 text-sm font-bold hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <CheckCircle2 size={16} /> Mark Complete
+                        </button>
+                      )}
+                    </article>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-5 sm:p-6">
+            <h2 className="mb-5 text-xl font-bold sm:text-2xl">Admin Access</h2>
+
+            {isSuperAdmin ? (
+              <div className="space-y-4">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-bold text-zinc-300">Search user</span>
+                  <input
+                    placeholder="Search username"
+                    className="w-full rounded bg-zinc-900 p-3 outline-none ring-1 ring-zinc-800 focus:ring-blue-500"
+                    value={adminSearch}
+                    onChange={(event) => setAdminSearch(event.target.value)}
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 block text-sm font-bold text-zinc-300">User</span>
+                  <select
+                    className="w-full rounded bg-zinc-900 p-3 outline-none ring-1 ring-zinc-800 focus:ring-blue-500"
+                    value={selectedAdminId}
+                    onChange={(event) => setSelectedAdminId(event.target.value)}
+                  >
+                    {filteredAdminCandidates.map((player) => (
+                      <option key={player.id} value={player.id}>
+                        {player.username}{player.is_admin ? ' - admin' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <button
+                  onClick={addAdmin}
+                  disabled={loading}
+                  className="w-full rounded bg-blue-600 p-3 font-bold hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {filteredAdminCandidates.map((player) => (
-                    <option key={player.id} value={player.id}>
-                      {player.username}{player.is_admin ? ' - admin' : ''}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <button
-                onClick={addAdmin}
-                disabled={loading}
-                className="w-full rounded bg-blue-600 p-3 font-bold hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Add Admin
-              </button>
-            </div>
-          ) : (
-            <p className="text-zinc-400">Only IGNORANCE can add new admins.</p>
-          )}
+                  Add Admin
+                </button>
+              </div>
+            ) : (
+              <p className="text-zinc-400">Only IGNORANCE can add new admins.</p>
+            )}
+          </div>
         </div>
       </section>
 
