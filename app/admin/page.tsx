@@ -28,7 +28,7 @@ type ModerationRequest = {
   responded_at?: string | null
 }
 
-const scoreOwnerColumns = ['id', 'profile_id', 'player_id']
+const scoreOwnerColumns = ['profile_id', 'player_id', 'id']
 
 function mergeUniquePlayers(players: Player[], fallbackPlayer: Player | null) {
   if (!fallbackPlayer) {
@@ -56,6 +56,8 @@ async function getSessionWithTimeout() {
 }
 
 async function upsertScore(table: string, playerId: string, elo: number) {
+  let lastError = ''
+
   for (const column of scoreOwnerColumns) {
     const { error } = await supabase
       .from(table)
@@ -64,12 +66,16 @@ async function upsertScore(table: string, playerId: string, elo: number) {
     if (!error) {
       return null
     }
+
+    lastError = error.message
   }
 
-  return 'Could not add the ranking. Check that the score table has an id, profile_id, or player_id column linked to profiles.'
+  return `Could not add the ranking. Make sure ${table} has a unique profile_id column linked to profiles. Last Supabase error: ${lastError}`
 }
 
 async function deleteScore(table: string, playerId: string) {
+  let lastError = ''
+
   for (const column of scoreOwnerColumns) {
     const { error } = await supabase
       .from(table)
@@ -79,9 +85,11 @@ async function deleteScore(table: string, playerId: string) {
     if (!error) {
       return null
     }
+
+    lastError = error.message
   }
 
-  return 'Could not remove the ranking. Check that the score table has an id, profile_id, or player_id column linked to profiles.'
+  return `Could not remove the ranking. Make sure ${table} has a profile_id, player_id, or id column linked to profiles. Last Supabase error: ${lastError}`
 }
 
 export default function AdminPage() {
