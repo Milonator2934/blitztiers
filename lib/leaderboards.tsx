@@ -2,6 +2,7 @@ import { AdminLink, AuthNav } from '@/app/AuthNav'
 import { BrandLogo } from '@/app/BrandLogo'
 import { categories } from '@/lib/categories'
 import { getRankBadgeClass } from '@/lib/rankStyles'
+import type { LeaderboardRegion } from '@/lib/regions'
 import { supabase } from '@/lib/supabase'
 
 export type LeaderboardConfig = {
@@ -12,6 +13,7 @@ export type LeaderboardConfig = {
 
 type LeaderboardPlayer = {
   elo: number
+  region?: string | null
   profiles: { username: string } | { username: string }[] | null
 }
 
@@ -30,16 +32,32 @@ function getUsername(profile: LeaderboardPlayer['profiles']) {
   return profile?.username || 'Unknown player'
 }
 
-export async function getLeaderboardPlayers(table: string) {
+export async function getLeaderboardPlayers(
+  table: string,
+  region: LeaderboardRegion = 'Global'
+) {
   const profileRelation = `${table}_profile_id_fkey`
-
-  const { data, error } = await supabase
-    .from(table)
-    .select(`
+  const selectColumns = region === 'Global'
+    ? `
       elo,
       profiles!${profileRelation}(username)
-    `)
+    `
+    : `
+      elo,
+      region,
+      profiles!${profileRelation}(username)
+    `
+
+  const query = supabase
+    .from(table)
+    .select(selectColumns)
     .order('elo', { ascending: false })
+
+  if (region !== 'Global') {
+    query.eq('region', region)
+  }
+
+  const { data, error } = await query
 
   if (error) {
     console.error(`Failed to load ${table}:`, error.message)
@@ -49,10 +67,19 @@ export async function getLeaderboardPlayers(table: string) {
   return (data || []) as unknown as LeaderboardPlayer[]
 }
 
-export async function getLeaderboardCount(table: string) {
-  const { count, error } = await supabase
+export async function getLeaderboardCount(
+  table: string,
+  region: LeaderboardRegion = 'Global'
+) {
+  const query = supabase
     .from(table)
     .select('*', { count: 'exact', head: true })
+
+  if (region !== 'Global') {
+    query.eq('region', region)
+  }
+
+  const { count, error } = await query
 
   if (error) {
     console.error(`Failed to count ${table}:`, error.message)
@@ -62,12 +89,12 @@ export async function getLeaderboardCount(table: string) {
   return count || 0
 }
 
-export async function getOverallLeaderboardPlayers() {
+export async function getOverallLeaderboardPlayers(region: LeaderboardRegion = 'Global') {
   const players = new Map<string, OverallPlayer>()
 
   await Promise.all(
     categories.map(async (category) => {
-      const rows = await getLeaderboardPlayers(category.table)
+      const rows = await getLeaderboardPlayers(category.table, region)
 
       rows.forEach((row) => {
         const username = getUsername(row.profiles)
@@ -83,7 +110,9 @@ export async function getOverallLeaderboardPlayers() {
           scores: {},
         }
 
-        existing.scores[category.key] = row.elo
+        if (!existing.scores[category.key] || row.elo > existing.scores[category.key]) {
+          existing.scores[category.key] = row.elo
+        }
         players.set(username, existing)
       })
     })
@@ -105,8 +134,14 @@ export async function getOverallLeaderboardPlayers() {
     .sort((a, b) => b.averageElo - a.averageElo)
 }
 
-export async function LeaderboardPage({ config }: { config: LeaderboardConfig }) {
-  const players = await getLeaderboardPlayers(config.table)
+export async function LeaderboardPage({
+  config,
+  region = 'Global',
+}: {
+  config: LeaderboardConfig
+  region?: LeaderboardRegion
+}) {
+  const players = await getLeaderboardPlayers(config.table, region)
 
   return (
     <main className="min-h-screen bg-black p-4 text-white sm:p-6 md:p-10">
@@ -117,7 +152,9 @@ export async function LeaderboardPage({ config }: { config: LeaderboardConfig })
             <AdminLink />
           </div>
           <h1 className="mt-3 text-3xl font-black sm:text-4xl md:text-5xl">{config.title}</h1>
-          <p className="mt-3 max-w-2xl text-zinc-400">{config.description}</p>
+          <p className="mt-3 max-w-2xl text-zinc-400">
+            {config.description} Showing {region} rankings.
+          </p>
         </div>
 
         <AuthNav />

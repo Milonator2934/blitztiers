@@ -24,10 +24,10 @@ export function calculatePowerElo(
   movingAir: number
 ) {
   const powerScore =
-    ground * 0.2 +
-    air * 0.2 +
-    movingGround * 0.3 +
-    movingAir * 0.3
+    ground * 0.3 +
+    air * 0.3 +
+    movingGround * 0.2 +
+    movingAir * 0.2
 
   const normalized = powerScore / 55
 

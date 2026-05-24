@@ -3,11 +3,17 @@ import { BrandLogo } from '@/app/BrandLogo'
 import { categories } from '@/lib/categories'
 import { getOverallLeaderboardPlayers } from '@/lib/leaderboards'
 import { getRankBadgeClass } from '@/lib/rankStyles'
+import { getLeaderboardRegion } from '@/lib/regions'
 
 export const dynamic = 'force-dynamic'
 
-export default async function OverallPage() {
-  const players = await getOverallLeaderboardPlayers()
+type PageProps = {
+  searchParams: Promise<{ region?: string | string[] }>
+}
+
+export default async function OverallPage({ searchParams }: PageProps) {
+  const region = getLeaderboardRegion((await searchParams).region)
+  const players = await getOverallLeaderboardPlayers(region)
 
   return (
     <main className="min-h-screen bg-black p-4 text-white sm:p-6 md:p-10">
@@ -19,7 +25,7 @@ export default async function OverallPage() {
           </div>
           <h1 className="mt-3 text-3xl font-black sm:text-4xl md:text-5xl">Overall Rankings</h1>
           <p className="mt-3 max-w-2xl text-zinc-400">
-            Total rank based on each player&apos;s average ELO across ranked categories.
+            Total rank based on each player&apos;s average ELO across ranked categories. Showing {region} rankings.
           </p>
         </div>
 

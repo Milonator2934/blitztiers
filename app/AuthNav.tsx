@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { RegionSelector } from '@/app/RegionSelector'
 import { supabase } from '@/lib/supabase'
 
 type Profile = {
@@ -79,19 +80,38 @@ export function AdminLink({ className = '' }: { className?: string }) {
 
 export function AuthNav() {
   const { loaded, profile } = useProfile()
+  const [regionQuery, setRegionQuery] = useState('')
+
+  useEffect(() => {
+    function syncRegionQuery() {
+      const region = new URLSearchParams(window.location.search).get('region')
+      setRegionQuery(region === 'NA' || region === 'EU' ? `?region=${region}` : '')
+    }
+
+    syncRegionQuery()
+    window.addEventListener('popstate', syncRegionQuery)
+
+    return () => window.removeEventListener('popstate', syncRegionQuery)
+  }, [])
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 text-sm text-zinc-300 sm:gap-x-6 sm:text-base">
-      <Link href="/overall" className="hover:text-white">Overall</Link>
-      <Link href="/accuracy" className="hover:text-white">Accuracy</Link>
-      <Link href="/power" className="hover:text-white">Power</Link>
-      <Link href="/passing" className="hover:text-white">Passing</Link>
-      <Link href="/goalkeeping" className="hover:text-white">Goalkeeping</Link>
-      <Link href="/get-ranked" className="font-bold text-blue-300 hover:text-blue-200">Get Ranked</Link>
-      <Link href="/info" className="hover:text-white">Info</Link>
-      <Link href="/login" className="font-bold text-white hover:text-blue-300">
-        {loaded && profile?.username ? profile.username : 'Login'}
-      </Link>
+    <div className="flex flex-col items-center gap-3 lg:flex-row lg:justify-end">
+      <RegionSelector />
+
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm text-zinc-300 sm:gap-x-6 sm:text-base lg:justify-end">
+        <Link href={`/overall${regionQuery}`} className="hover:text-white">Overall</Link>
+        <Link href={`/accuracy${regionQuery}`} className="hover:text-white">Accuracy</Link>
+        <Link href={`/power${regionQuery}`} className="hover:text-white">Power</Link>
+        <Link href={`/passing${regionQuery}`} className="hover:text-white">Passing</Link>
+        <Link href={`/goalkeeping${regionQuery}`} className="hover:text-white">Goalkeeping</Link>
+        <Link href="/dribbling" className="hover:text-white">Dribbling</Link>
+        <Link href="/defending" className="hover:text-white">Defending</Link>
+        <Link href="/get-ranked" className="font-bold text-blue-300 hover:text-blue-200">Get Ranked</Link>
+        <Link href="/info" className="hover:text-white">Info</Link>
+        <Link href="/login" className="font-bold text-white hover:text-blue-300">
+          {loaded && profile?.username ? profile.username : 'Login'}
+        </Link>
+      </div>
     </div>
   )
 }

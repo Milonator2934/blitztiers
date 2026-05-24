@@ -1,10 +1,18 @@
 import { LeaderboardPage } from '@/lib/leaderboards'
+import { getLeaderboardRegion } from '@/lib/regions'
 
 export const dynamic = 'force-dynamic'
 
-export default function GoalkeepingPage() {
+type PageProps = {
+  searchParams: Promise<{ region?: string | string[] }>
+}
+
+export default async function GoalkeepingPage({ searchParams }: PageProps) {
+  const region = getLeaderboardRegion((await searchParams).region)
+
   return (
     <LeaderboardPage
+      region={region}
       config={{
         title: 'Goalkeeping Rankings',
         table: 'goalkeeping_scores',

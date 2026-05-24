@@ -6,6 +6,7 @@ import { Send, UserCheck } from 'lucide-react'
 import { AdminLink, AuthNav } from '@/app/AuthNav'
 import { BrandLogo } from '@/app/BrandLogo'
 import { categories, type CategoryKey } from '@/lib/categories'
+import { rankingRegions, type RankingRegion } from '@/lib/regions'
 import { supabase } from '@/lib/supabase'
 
 type Profile = {
@@ -40,6 +41,7 @@ export default function GetRankedPage() {
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null)
   const [admins, setAdmins] = useState<Profile[]>([])
   const [categoryKey, setCategoryKey] = useState<CategoryKey>('accuracy')
+  const [region, setRegion] = useState<RankingRegion>('NA')
   const [codeType, setCodeType] = useState<CodeType>('calibration')
   const [codeNumber, setCodeNumber] = useState('1')
   const [requestedAdminId, setRequestedAdminId] = useState('')
@@ -134,6 +136,7 @@ export default function GetRankedPage() {
     const { error: requestError } = await supabase.from('moderation_requests').insert({
       requester_id: currentProfile.id,
       category: categoryKey,
+      region,
       code_type: codeType,
       code_number: numericCodeNumber,
       requested_admin_id: requestedAdminId || null,
@@ -151,7 +154,7 @@ export default function GetRankedPage() {
     }
 
     setMessage(
-      `Request sent for ${selectedCategory.shortLabel}, ${codeType} code ${numericCodeNumber}.`
+      `Request sent for ${selectedCategory.shortLabel} in ${region}, ${codeType} code ${numericCodeNumber}.`
     )
     setRequestedAdminId('')
   }
@@ -212,6 +215,21 @@ export default function GetRankedPage() {
                   {categories.map((category) => (
                     <option key={category.key} value={category.key}>
                       {category.shortLabel}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-bold text-zinc-300">Region</span>
+                <select
+                  className="w-full rounded bg-zinc-900 p-3 outline-none ring-1 ring-zinc-800 focus:ring-blue-500"
+                  value={region}
+                  onChange={(event) => setRegion(event.target.value as RankingRegion)}
+                >
+                  {rankingRegions.map((rankingRegion) => (
+                    <option key={rankingRegion} value={rankingRegion}>
+                      {rankingRegion}
                     </option>
                   ))}
                 </select>

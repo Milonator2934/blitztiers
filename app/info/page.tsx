@@ -27,7 +27,7 @@ const measurements = [
       'Power measures the fastest useful shot speeds a player can create in several situations.',
     details: [
       'Ground shots, air shots, moving ground shots, and moving air shots are measured.',
-      'Moving shots count more because they are harder to create cleanly.',
+      'Moving shots count less because it is easier to generate extra power while moving.',
     ],
   },
   {
@@ -46,6 +46,24 @@ const measurements = [
     details: [
       'The main number is save rate: saves divided by total shots faced.',
       'More saves and fewer goals allowed produce a higher ELO score.',
+    ],
+  },
+  {
+    title: 'Dribbling',
+    summary:
+      'Dribbling rankings are coming soon once the test route and scoring format are finalized.',
+    details: [
+      'This category is visible now so players know it is planned.',
+      'Scores will not be ranked until the test is ready.',
+    ],
+  },
+  {
+    title: 'Defending',
+    summary:
+      'Defending rankings are coming soon once the challenge format and scoring model are finalized.',
+    details: [
+      'This category is visible now so players know it is planned.',
+      'Scores will not be ranked until the test is ready.',
     ],
   },
 ]

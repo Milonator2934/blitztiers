@@ -1,10 +1,18 @@
 import { LeaderboardPage } from '@/lib/leaderboards'
+import { getLeaderboardRegion } from '@/lib/regions'
 
 export const dynamic = 'force-dynamic'
 
-export default function PassingPage() {
+type PageProps = {
+  searchParams: Promise<{ region?: string | string[] }>
+}
+
+export default async function PassingPage({ searchParams }: PageProps) {
+  const region = getLeaderboardRegion((await searchParams).region)
+
   return (
     <LeaderboardPage
+      region={region}
       config={{
         title: 'Passing Rankings',
         table: 'passing_scores',

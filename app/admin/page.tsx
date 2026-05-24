@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, ShieldCheck, Trash2, UserPlus } from 'lucide-react'
 import { BrandLogo } from '@/app/BrandLogo'
 import { categories, type CategoryKey, getCategory } from '@/lib/categories'
+import { rankingRegions, type RankingRegion } from '@/lib/regions'
 import { supabase } from '@/lib/supabase'
 
 type Player = {
@@ -19,6 +20,7 @@ type ModerationRequest = {
   id: string
   requester_id: string
   category: CategoryKey
+  region?: RankingRegion | null
   code_type: string
   code_number: number
   requested_admin_id?: string | null
@@ -56,26 +58,74 @@ async function getSessionWithTimeout() {
   return Promise.race([session, timeout])
 }
 
-async function upsertScore(table: string, playerId: string, elo: number) {
-  const { error } = await supabase
-    .from(table)
-    .upsert({ profile_id: playerId, elo }, { onConflict: 'profile_id' })
-
-  if (!error) {
-    return null
-  }
-
-  return `Could not add the ranking. Make sure ${table} has a unique profile_id column linked to profiles. Supabase error: ${error.message}`
+type ScoreActionResult = {
+  error?: string
+  keptExisting?: boolean
+  previousElo?: number
 }
 
-async function deleteScore(table: string, playerId: string) {
+async function upsertScore(
+  table: string,
+  playerId: string,
+  region: RankingRegion,
+  elo: number,
+  inputValues: Record<string, number>
+): Promise<ScoreActionResult> {
+  const { data: existingScore, error: existingError } = await supabase
+    .from(table)
+    .select('elo')
+    .eq('profile_id', playerId)
+    .eq('region', region)
+    .maybeSingle()
+
+  if (existingError) {
+    return {
+      error: `Could not check the existing ranking. Make sure ${table} has region and input_values columns. Supabase error: ${existingError.message}`,
+    }
+  }
+
+  if (existingScore?.elo && elo <= existingScore.elo) {
+    return {
+      keptExisting: true,
+      previousElo: existingScore.elo,
+    }
+  }
+
+  const { error } = await supabase
+    .from(table)
+    .upsert(
+      {
+        profile_id: playerId,
+        region,
+        elo,
+        input_values: inputValues,
+      },
+      { onConflict: 'profile_id,region' }
+    )
+
+  if (!error) {
+    return {}
+  }
+
+  return {
+    error: `Could not add the ranking. Make sure ${table} has a unique profile_id + region index linked to profiles. Supabase error: ${error.message}`,
+  }
+}
+
+async function deleteScore(table: string, playerId: string, region: RankingRegion) {
   const errors: string[] = []
 
   for (const column of scoreDeleteOwnerColumns) {
-    const { error } = await supabase
+    let query = supabase
       .from(table)
       .delete()
       .eq(column, playerId)
+
+    if (column !== 'id') {
+      query = query.eq('region', region)
+    }
+
+    const { error } = await query
 
     if (!error) {
       return null
@@ -98,6 +148,7 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>('rankings')
   const [mode, setMode] = useState<ActionMode>('add')
   const [categoryKey, setCategoryKey] = useState<CategoryKey>('accuracy')
+  const [rankingRegion, setRankingRegion] = useState<RankingRegion>('NA')
   const [scoreValues, setScoreValues] = useState<Record<string, string>>({})
   const [requestResponses, setRequestResponses] = useState<Record<string, string>>({})
   const [message, setMessage] = useState('')
@@ -178,7 +229,7 @@ export default function AdminPage() {
 
       const { data: requests, error: requestsError } = await supabase
         .from('moderation_requests')
-        .select('id, requester_id, category, code_type, code_number, requested_admin_id, responding_admin_id, admin_response, status, created_at, responded_at')
+        .select('id, requester_id, category, region, code_type, code_number, requested_admin_id, responding_admin_id, admin_response, status, created_at, responded_at')
         .order('created_at', { ascending: false })
 
       if (!ignore) {
@@ -203,6 +254,40 @@ export default function AdminPage() {
       ignore = true
     }
   }, [])
+
+  useEffect(() => {
+    let ignore = false
+
+    async function loadExistingInputs() {
+      if (!selectedPlayerValue || mode !== 'add') {
+        return
+      }
+
+      const { data } = await supabase
+        .from(selectedCategory.table)
+        .select('input_values')
+        .eq('profile_id', selectedPlayerValue)
+        .eq('region', rankingRegion)
+        .maybeSingle()
+
+      if (!ignore && data?.input_values && typeof data.input_values === 'object') {
+        const nextValues: Record<string, string> = {}
+        for (const field of selectedCategory.fields) {
+          const value = (data.input_values as Record<string, number>)[field.key]
+          if (Number.isFinite(value)) {
+            nextValues[field.key] = String(value)
+          }
+        }
+        setScoreValues(nextValues)
+      }
+    }
+
+    loadExistingInputs()
+
+    return () => {
+      ignore = true
+    }
+  }, [mode, rankingRegion, selectedCategory, selectedPlayerValue])
 
   function updateScoreValue(key: string, value: string) {
     setScoreValues((current) => ({
@@ -249,7 +334,7 @@ export default function AdminPage() {
     setLoading(true)
 
     if (mode === 'remove') {
-      const removeError = await deleteScore(selectedCategory.table, selectedPlayerValue)
+      const removeError = await deleteScore(selectedCategory.table, selectedPlayerValue, rankingRegion)
       setLoading(false)
 
       if (removeError) {
@@ -257,7 +342,7 @@ export default function AdminPage() {
         return
       }
 
-      setMessage(`Removed ${selectedCategory.shortLabel} ranking.`)
+      setMessage(`Removed ${selectedCategory.shortLabel} ${rankingRegion} ranking.`)
       return
     }
 
@@ -270,15 +355,28 @@ export default function AdminPage() {
     }
 
     const elo = selectedCategory.calculateElo(numericValues)
-    const addError = await upsertScore(selectedCategory.table, selectedPlayerValue, elo)
+    const result = await upsertScore(
+      selectedCategory.table,
+      selectedPlayerValue,
+      rankingRegion,
+      elo,
+      numericValues
+    )
     setLoading(false)
 
-    if (addError) {
-      setError(addError)
+    if (result.error) {
+      setError(result.error)
       return
     }
 
-    setMessage(`Added ${selectedCategory.shortLabel} ranking with ${elo} ELO.`)
+    if (result.keptExisting) {
+      setMessage(
+        `${selectedCategory.shortLabel} ${rankingRegion} ranking stayed at ${result.previousElo} ELO because the retrial returned ${elo}.`
+      )
+      return
+    }
+
+    setMessage(`Added ${selectedCategory.shortLabel} ${rankingRegion} ranking with ${elo} ELO.`)
   }
 
   async function addAdmin() {
@@ -463,6 +561,24 @@ export default function AdminPage() {
                 ))}
               </select>
             </label>
+
+            <label className="block">
+              <span className="mb-2 block text-sm font-bold text-zinc-300">Region</span>
+              <select
+                className="w-full rounded bg-zinc-900 p-3 outline-none ring-1 ring-zinc-800 focus:ring-blue-500"
+                value={rankingRegion}
+                onChange={(event) => {
+                  setRankingRegion(event.target.value as RankingRegion)
+                  setScoreValues({})
+                }}
+              >
+                {rankingRegions.map((region) => (
+                  <option key={region} value={region}>
+                    {region}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
 
           <div className="mt-4 grid gap-4 md:grid-cols-[1fr_1fr]">
@@ -553,7 +669,7 @@ export default function AdminPage() {
                       <div>
                         <p className="font-bold">{getPlayerName(request.requester_id)}</p>
                         <p className="mt-1 text-sm text-zinc-300">
-                          {getCategory(request.category).shortLabel} - {request.code_type} #{request.code_number}
+                          {getCategory(request.category).shortLabel} - {request.region || 'NA'} - {request.code_type} #{request.code_number}
                         </p>
                         <p className="mt-1 text-xs text-zinc-500">
                           Requested admin: {requestedAdmin}

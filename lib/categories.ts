@@ -52,7 +52,7 @@ export const categories: CategoryConfig[] = [
     label: 'Shot Power',
     shortLabel: 'Shot Power',
     table: 'power_scores',
-    description: 'Measures maximum effective shot velocity up to 55m/s.',
+    description: 'Measures maximum effective shot velocity up to 55m/s, with moving shots weighted lower.',
     fields: [
       { key: 'ground', label: 'Ground shot velocity', min: 0, max: 55 },
       { key: 'air', label: 'Air shot velocity', min: 0, max: 55 },
