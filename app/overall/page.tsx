@@ -25,6 +25,7 @@ export default async function OverallPage() {
           <Link href="/passing" className="hover:text-white">Passing</Link>
           <Link href="/goalkeeping" className="hover:text-white">Goalkeeping</Link>
           <Link href="/power" className="hover:text-white">Shot Power</Link>
+          <Link href="/info" className="hover:text-white">Info</Link>
         </nav>
       </div>
 

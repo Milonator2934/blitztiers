@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { CheckCircle2, Eye, EyeOff, KeyRound, LogIn, Mail, ShieldCheck, User } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
@@ -35,6 +36,7 @@ async function rememberTrustedDevice(userId: string) {
 }
 
 export default function LoginPage() {
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [verificationCode, setVerificationCode] = useState('')
@@ -273,6 +275,8 @@ export default function LoginPage() {
     setSignupStep('complete')
     setLoggedInEmail(email)
     setMessage('Account created and verified. You are logged in on this trusted device.')
+    router.replace('/')
+    router.refresh()
   }
 
   async function signIn() {
@@ -300,6 +304,8 @@ export default function LoginPage() {
       await rememberTrustedDevice(data.user.id)
       setLoggedInEmail(data.user.email || email)
       setMessage('Logged in. This device/IP is now remembered.')
+      router.replace('/')
+      router.refresh()
     }
   }
 

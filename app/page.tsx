@@ -51,6 +51,13 @@ export default async function HomePage() {
           >
             Login
           </Link>
+
+          <Link
+            href="/info"
+            className="bg-zinc-800 hover:bg-zinc-700 px-8 py-4 rounded-xl font-bold"
+          >
+            How It Works
+          </Link>
         </div>
       </section>
 

@@ -60,6 +60,7 @@ export function AuthNav() {
       <Link href="/power" className="hover:text-white">Power</Link>
       <Link href="/passing" className="hover:text-white">Passing</Link>
       <Link href="/goalkeeping" className="hover:text-white">Goalkeeping</Link>
+      <Link href="/info" className="hover:text-white">Info</Link>
       {isAdmin && <Link href="/admin" className="font-bold text-blue-400 hover:text-blue-300">Admin</Link>}
       <Link href="/login" className="font-bold text-white hover:text-blue-300">
         {loaded && profile?.username ? profile.username : 'Login'}
