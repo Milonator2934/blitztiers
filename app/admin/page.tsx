@@ -28,7 +28,6 @@ type ModerationRequest = {
   responded_at?: string | null
 }
 
-const scoreInsertOwnerColumns = ['profile_id', 'player_id']
 const scoreDeleteOwnerColumns = ['profile_id', 'player_id', 'id']
 
 function mergeUniquePlayers(players: Player[], fallbackPlayer: Player | null) {
@@ -57,21 +56,15 @@ async function getSessionWithTimeout() {
 }
 
 async function upsertScore(table: string, playerId: string, elo: number) {
-  const errors: string[] = []
+  const { error } = await supabase
+    .from(table)
+    .upsert({ profile_id: playerId, elo }, { onConflict: 'profile_id' })
 
-  for (const column of scoreInsertOwnerColumns) {
-    const { error } = await supabase
-      .from(table)
-      .upsert({ [column]: playerId, elo }, { onConflict: column })
-
-    if (!error) {
-      return null
-    }
-
-    errors.push(`${column}: ${error.message}`)
+  if (!error) {
+    return null
   }
 
-  return `Could not add the ranking. Make sure ${table} has a unique profile_id column linked to profiles. Supabase errors: ${errors.join(' | ')}`
+  return `Could not add the ranking. Make sure ${table} has a unique profile_id column linked to profiles. Supabase error: ${error.message}`
 }
 
 async function deleteScore(table: string, playerId: string) {

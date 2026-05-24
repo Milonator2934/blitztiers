@@ -30,11 +30,13 @@ function getUsername(profile: LeaderboardPlayer['profiles']) {
 }
 
 export async function getLeaderboardPlayers(table: string) {
+  const profileRelation = `${table}_profile_id_fkey`
+
   const { data, error } = await supabase
     .from(table)
     .select(`
       elo,
-      profiles(username)
+      profiles!${profileRelation}(username)
     `)
     .order('elo', { ascending: false })
 
@@ -43,7 +45,7 @@ export async function getLeaderboardPlayers(table: string) {
     return []
   }
 
-  return (data || []) as LeaderboardPlayer[]
+  return (data || []) as unknown as LeaderboardPlayer[]
 }
 
 export async function getLeaderboardCount(table: string) {
