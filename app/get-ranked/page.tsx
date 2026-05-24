@@ -45,7 +45,11 @@ export default function GetRankedPage() {
 
     async function loadPageData() {
       const { data: sessionData } = await supabase.auth.getSession()
-      const userId = sessionData.session?.user.id
+      const { data: userData } = sessionData.session
+        ? { data: { user: sessionData.session.user } }
+        : await supabase.auth.getUser()
+      const user = userData.user
+      const userId = user?.id
 
       if (!userId) {
         if (!ignore) {
@@ -67,7 +71,11 @@ export default function GetRankedPage() {
       ])
 
       if (!ignore) {
-        setCurrentProfile(profile || null)
+        setCurrentProfile(profile || user.user_metadata?.username ? {
+          id: userId,
+          username: profile?.username || user.user_metadata.username,
+          is_admin: profile?.is_admin,
+        } : null)
         setAdmins(
           (profiles || []).filter(
             (player) => player.username === 'IGNORANCE' || player.is_admin === true

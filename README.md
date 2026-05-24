@@ -57,8 +57,11 @@ create table if not exists moderation_requests (
   code_type text not null check (code_type in ('calibration', 'clubhouse', 'golf club', 'freerunners', 'girls who drift')),
   code_number integer not null check (code_number between 1 and 24),
   requested_admin_id uuid references profiles(id) on delete set null,
+  responding_admin_id uuid references profiles(id) on delete set null,
+  admin_response text,
   status text not null default 'pending',
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  responded_at timestamptz
 );
 ```
 
