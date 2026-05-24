@@ -14,6 +14,23 @@ create table if not exists public.moderation_requests (
 
 alter table public.moderation_requests enable row level security;
 
+create or replace function public.is_blitztiers_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.profiles
+    where id = auth.uid()
+      and (username = 'IGNORANCE' or is_admin = true)
+  );
+$$;
+
+grant execute on function public.is_blitztiers_admin() to authenticated;
+
 drop policy if exists "Players can create their own moderation requests" on public.moderation_requests;
 create policy "Players can create their own moderation requests"
   on public.moderation_requests
@@ -33,33 +50,12 @@ create policy "Admins can read moderation requests"
   on public.moderation_requests
   for select
   to authenticated
-  using (
-    exists (
-      select 1
-      from public.profiles
-      where profiles.id = auth.uid()
-        and (profiles.username = 'IGNORANCE' or profiles.is_admin = true)
-    )
-  );
+  using (public.is_blitztiers_admin());
 
 drop policy if exists "Admins can respond to moderation requests" on public.moderation_requests;
 create policy "Admins can respond to moderation requests"
   on public.moderation_requests
   for update
   to authenticated
-  using (
-    exists (
-      select 1
-      from public.profiles
-      where profiles.id = auth.uid()
-        and (profiles.username = 'IGNORANCE' or profiles.is_admin = true)
-    )
-  )
-  with check (
-    exists (
-      select 1
-      from public.profiles
-      where profiles.id = auth.uid()
-        and (profiles.username = 'IGNORANCE' or profiles.is_admin = true)
-    )
-  );
+  using (public.is_blitztiers_admin())
+  with check (public.is_blitztiers_admin());

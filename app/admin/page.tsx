@@ -30,6 +30,18 @@ type ModerationRequest = {
 
 const scoreOwnerColumns = ['id', 'profile_id', 'player_id']
 
+function mergeUniquePlayers(players: Player[], fallbackPlayer: Player | null) {
+  if (!fallbackPlayer) {
+    return players
+  }
+
+  if (players.some((player) => player.id === fallbackPlayer.id)) {
+    return players
+  }
+
+  return [...players, fallbackPlayer].sort((a, b) => a.username.localeCompare(b.username))
+}
+
 async function getSessionWithTimeout() {
   const timeout = new Promise<null>((resolve) => {
     window.setTimeout(() => resolve(null), 3000)
@@ -144,6 +156,18 @@ export default function AdminPage() {
         .eq('id', userId)
         .maybeSingle()
 
+      const fallbackProfile = profile || user.user_metadata?.username ? {
+        id: userId,
+        username: profile?.username || user.user_metadata.username,
+        is_admin: profile?.is_admin,
+      } : null
+
+      if (!profile && fallbackProfile?.username) {
+        await supabase
+          .from('profiles')
+          .upsert({ id: fallbackProfile.id, username: fallbackProfile.username })
+      }
+
       const { data: allPlayers } = await supabase
         .from('profiles')
         .select('id, username, is_admin')
@@ -155,20 +179,17 @@ export default function AdminPage() {
         .order('created_at', { ascending: false })
 
       if (!ignore) {
-        setCurrentProfile(profile || user.user_metadata?.username ? {
-          id: userId,
-          username: profile?.username || user.user_metadata.username,
-          is_admin: profile?.is_admin,
-        } : null)
-        setPlayers(allPlayers || [])
+        const playerList = mergeUniquePlayers(allPlayers || [], fallbackProfile)
+        setCurrentProfile(fallbackProfile)
+        setPlayers(playerList)
         setModerationRequests((requests || []) as ModerationRequest[])
         setRequestError(
           requestsError?.message.includes("Could not find the table")
             ? 'The moderation_requests table is missing in Supabase. Run supabase/migrations/0001_create_moderation_requests.sql in the Supabase SQL editor, then reload this page.'
             : requestsError?.message || ''
         )
-        setSelectedPlayerId(allPlayers?.[0]?.id || '')
-        setSelectedAdminId(allPlayers?.[0]?.id || '')
+        setSelectedPlayerId(playerList[0]?.id || '')
+        setSelectedAdminId(playerList[0]?.id || '')
         setCheckingAccess(false)
       }
     }

@@ -23,6 +23,18 @@ const codeTypes: CodeType[] = [
   'girls who drift',
 ]
 
+function mergeUniqueProfiles(profiles: Profile[], fallbackProfile: Profile | null) {
+  if (!fallbackProfile) {
+    return profiles
+  }
+
+  if (profiles.some((profile) => profile.id === fallbackProfile.id)) {
+    return profiles
+  }
+
+  return [...profiles, fallbackProfile].sort((a, b) => a.username.localeCompare(b.username))
+}
+
 export default function GetRankedPage() {
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null)
   const [admins, setAdmins] = useState<Profile[]>([])
@@ -71,13 +83,22 @@ export default function GetRankedPage() {
       ])
 
       if (!ignore) {
-        setCurrentProfile(profile || user.user_metadata?.username ? {
+        const fallbackProfile = profile || user.user_metadata?.username ? {
           id: userId,
           username: profile?.username || user.user_metadata.username,
           is_admin: profile?.is_admin,
-        } : null)
+        } : null
+        const profileList = mergeUniqueProfiles(profiles || [], fallbackProfile)
+
+        if (!profile && fallbackProfile?.username) {
+          await supabase
+            .from('profiles')
+            .upsert({ id: fallbackProfile.id, username: fallbackProfile.username })
+        }
+
+        setCurrentProfile(fallbackProfile)
         setAdmins(
-          (profiles || []).filter(
+          profileList.filter(
             (player) => player.username === 'IGNORANCE' || player.is_admin === true
           )
         )
