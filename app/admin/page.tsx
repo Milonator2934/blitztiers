@@ -28,7 +28,8 @@ type ModerationRequest = {
   responded_at?: string | null
 }
 
-const scoreOwnerColumns = ['profile_id', 'player_id', 'id']
+const scoreInsertOwnerColumns = ['profile_id', 'player_id']
+const scoreDeleteOwnerColumns = ['profile_id', 'player_id', 'id']
 
 function mergeUniquePlayers(players: Player[], fallbackPlayer: Player | null) {
   if (!fallbackPlayer) {
@@ -56,9 +57,9 @@ async function getSessionWithTimeout() {
 }
 
 async function upsertScore(table: string, playerId: string, elo: number) {
-  let lastError = ''
+  const errors: string[] = []
 
-  for (const column of scoreOwnerColumns) {
+  for (const column of scoreInsertOwnerColumns) {
     const { error } = await supabase
       .from(table)
       .upsert({ [column]: playerId, elo }, { onConflict: column })
@@ -67,16 +68,16 @@ async function upsertScore(table: string, playerId: string, elo: number) {
       return null
     }
 
-    lastError = error.message
+    errors.push(`${column}: ${error.message}`)
   }
 
-  return `Could not add the ranking. Make sure ${table} has a unique profile_id column linked to profiles. Last Supabase error: ${lastError}`
+  return `Could not add the ranking. Make sure ${table} has a unique profile_id column linked to profiles. Supabase errors: ${errors.join(' | ')}`
 }
 
 async function deleteScore(table: string, playerId: string) {
-  let lastError = ''
+  const errors: string[] = []
 
-  for (const column of scoreOwnerColumns) {
+  for (const column of scoreDeleteOwnerColumns) {
     const { error } = await supabase
       .from(table)
       .delete()
@@ -86,10 +87,10 @@ async function deleteScore(table: string, playerId: string) {
       return null
     }
 
-    lastError = error.message
+    errors.push(`${column}: ${error.message}`)
   }
 
-  return `Could not remove the ranking. Make sure ${table} has a profile_id, player_id, or id column linked to profiles. Last Supabase error: ${lastError}`
+  return `Could not remove the ranking. Make sure ${table} has a profile_id, player_id, or id column linked to profiles. Supabase errors: ${errors.join(' | ')}`
 }
 
 export default function AdminPage() {
