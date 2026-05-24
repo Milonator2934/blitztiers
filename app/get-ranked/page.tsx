@@ -120,7 +120,11 @@ export default function GetRankedPage() {
     setLoading(false)
 
     if (requestError) {
-      setError(requestError.message)
+      setError(
+        requestError.message.includes("Could not find the table")
+          ? 'Moderation requests are not set up yet. Run supabase/migrations/0001_create_moderation_requests.sql in Supabase, then try again.'
+          : requestError.message
+      )
       return
     }
 

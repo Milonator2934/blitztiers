@@ -111,6 +111,15 @@ export default function AdminPage() {
     [players, adminSearch]
   )
 
+  const selectedPlayerValue = filteredPlayers.some((player) => player.id === selectedPlayerId)
+    ? selectedPlayerId
+    : filteredPlayers[0]?.id || ''
+
+  const selectedAdminValue = filteredAdminCandidates.some((player) => player.id === selectedAdminId)
+    ? selectedAdminId
+    : filteredAdminCandidates[0]?.id || ''
+
+
   useEffect(() => {
     let ignore = false
 
@@ -153,7 +162,11 @@ export default function AdminPage() {
         } : null)
         setPlayers(allPlayers || [])
         setModerationRequests((requests || []) as ModerationRequest[])
-        setRequestError(requestsError?.message || '')
+        setRequestError(
+          requestsError?.message.includes("Could not find the table")
+            ? 'The moderation_requests table is missing in Supabase. Run supabase/migrations/0001_create_moderation_requests.sql in the Supabase SQL editor, then reload this page.'
+            : requestsError?.message || ''
+        )
         setSelectedPlayerId(allPlayers?.[0]?.id || '')
         setSelectedAdminId(allPlayers?.[0]?.id || '')
         setCheckingAccess(false)
@@ -199,7 +212,7 @@ export default function AdminPage() {
       return
     }
 
-    if (!selectedPlayerId) {
+    if (!selectedPlayerValue) {
       setError('Select a player first.')
       return
     }
@@ -212,7 +225,7 @@ export default function AdminPage() {
     setLoading(true)
 
     if (mode === 'remove') {
-      const removeError = await deleteScore(selectedCategory.table, selectedPlayerId)
+      const removeError = await deleteScore(selectedCategory.table, selectedPlayerValue)
       setLoading(false)
 
       if (removeError) {
@@ -233,7 +246,7 @@ export default function AdminPage() {
     }
 
     const elo = selectedCategory.calculateElo(numericValues)
-    const addError = await upsertScore(selectedCategory.table, selectedPlayerId, elo)
+    const addError = await upsertScore(selectedCategory.table, selectedPlayerValue, elo)
     setLoading(false)
 
     if (addError) {
@@ -253,7 +266,7 @@ export default function AdminPage() {
       return
     }
 
-    if (!selectedAdminId) {
+    if (!selectedAdminValue) {
       setError('Select a user to make admin.')
       return
     }
@@ -262,7 +275,7 @@ export default function AdminPage() {
     const { error: adminError } = await supabase
       .from('profiles')
       .update({ is_admin: true })
-      .eq('id', selectedAdminId)
+      .eq('id', selectedAdminValue)
     setLoading(false)
 
     if (adminError) {
@@ -272,7 +285,7 @@ export default function AdminPage() {
 
     setPlayers((current) =>
       current.map((player) =>
-        player.id === selectedAdminId ? { ...player, is_admin: true } : player
+        player.id === selectedAdminValue ? { ...player, is_admin: true } : player
       )
     )
     setMessage('User added as an admin.')
@@ -442,9 +455,11 @@ export default function AdminPage() {
               <span className="mb-2 block text-sm font-bold text-zinc-300">Player</span>
               <select
                 className="w-full rounded bg-zinc-900 p-3 outline-none ring-1 ring-zinc-800 focus:ring-blue-500"
-                value={selectedPlayerId}
+                value={selectedPlayerValue}
                 onChange={(event) => setSelectedPlayerId(event.target.value)}
+                disabled={filteredPlayers.length === 0}
               >
+                {filteredPlayers.length === 0 && <option value="">No matching players</option>}
                 {filteredPlayers.map((player) => (
                   <option key={player.id} value={player.id}>
                     {player.username}
@@ -583,9 +598,11 @@ export default function AdminPage() {
                 <span className="mb-2 block text-sm font-bold text-zinc-300">User</span>
                 <select
                   className="w-full rounded bg-zinc-900 p-3 outline-none ring-1 ring-zinc-800 focus:ring-blue-500"
-                  value={selectedAdminId}
+                  value={selectedAdminValue}
                   onChange={(event) => setSelectedAdminId(event.target.value)}
+                  disabled={filteredAdminCandidates.length === 0}
                 >
+                  {filteredAdminCandidates.length === 0 && <option value="">No matching users</option>}
                   {filteredAdminCandidates.map((player) => (
                     <option key={player.id} value={player.id}>
                       {player.username}{player.is_admin ? ' - admin' : ''}
