@@ -5,6 +5,19 @@ create table if not exists public.profiles (
   created_at timestamptz not null default now()
 );
 
+alter table public.profiles
+  add column if not exists username text;
+
+alter table public.profiles
+  add column if not exists is_admin boolean not null default false;
+
+alter table public.profiles
+  add column if not exists created_at timestamptz not null default now();
+
+create unique index if not exists profiles_username_key
+  on public.profiles (username)
+  where username is not null;
+
 alter table public.profiles enable row level security;
 
 create or replace function public.is_blitztiers_super_admin()

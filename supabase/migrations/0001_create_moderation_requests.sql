@@ -1,3 +1,6 @@
+alter table public.profiles
+  add column if not exists is_admin boolean not null default false;
+
 create table if not exists public.moderation_requests (
   id uuid primary key default gen_random_uuid(),
   requester_id uuid not null references public.profiles(id) on delete cascade,
@@ -25,7 +28,10 @@ as $$
     select 1
     from public.profiles
     where id = auth.uid()
-      and (username = 'IGNORANCE' or is_admin = true)
+      and (
+        username = 'IGNORANCE'
+        or coalesce(to_jsonb(profiles)->>'is_admin', 'false') = 'true'
+      )
   );
 $$;
 
