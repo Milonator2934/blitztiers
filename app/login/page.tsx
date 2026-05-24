@@ -303,7 +303,26 @@ export default function LoginPage() {
 
     if (data.user) {
       await rememberTrustedDevice(data.user.id)
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', data.user.id)
+        .maybeSingle()
+
+      if (profileError) {
+        setError(profileError.message)
+        return
+      }
+
       setLoggedInEmail(data.user.email || email)
+      if (!profile?.username && !data.user.user_metadata?.username) {
+        setVerifiedUserId(data.user.id)
+        setSignupStep('username')
+        setMessage('Logged in. Choose your leaderboard username so the site can recognize you as a player.')
+        return
+      }
+
       setMessage('Logged in. This device/IP is now remembered.')
       router.replace('/')
       router.refresh()
