@@ -155,6 +155,7 @@ export default function AdminPage() {
   const [error, setError] = useState('')
   const [requestError, setRequestError] = useState('')
   const [moderationRequests, setModerationRequests] = useState<ModerationRequest[]>([])
+  const [retrialRequestIds, setRetrialRequestIds] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
 
   const selectedCategory = getCategory(categoryKey)
@@ -232,11 +233,41 @@ export default function AdminPage() {
         .select('id, requester_id, category, region, code_type, code_number, requested_admin_id, responding_admin_id, admin_response, status, created_at, responded_at')
         .order('created_at', { ascending: false })
 
+      const nextRetrialRequestIds: string[] = []
+      const loadedRequests = (requests || []) as ModerationRequest[]
+
+      await Promise.all(
+        categories.map(async (category) => {
+          const categoryRequests = loadedRequests.filter((request) => request.category === category.key)
+          const requesterIds = Array.from(new Set(categoryRequests.map((request) => request.requester_id)))
+
+          if (requesterIds.length === 0) {
+            return
+          }
+
+          const { data: scores } = await supabase
+            .from(category.table)
+            .select('profile_id, region')
+            .in('profile_id', requesterIds)
+
+          const rankedKeys = new Set(
+            (scores || []).map((score) => `${score.profile_id}:${score.region || 'NA'}`)
+          )
+
+          categoryRequests.forEach((request) => {
+            if (rankedKeys.has(`${request.requester_id}:${request.region || 'NA'}`)) {
+              nextRetrialRequestIds.push(request.id)
+            }
+          })
+        })
+      )
+
       if (!ignore) {
         const playerList = mergeUniquePlayers(allPlayers || [], fallbackProfile)
         setCurrentProfile(fallbackProfile)
         setPlayers(playerList)
-        setModerationRequests((requests || []) as ModerationRequest[])
+        setModerationRequests(loadedRequests)
+        setRetrialRequestIds(nextRetrialRequestIds)
         setRequestError(
           requestsError?.message.includes("Could not find the table")
             ? 'The moderation_requests table is missing in Supabase. Run supabase/migrations/0001_create_moderation_requests.sql in the Supabase SQL editor, then reload this page.'
@@ -611,7 +642,11 @@ export default function AdminPage() {
           </div>
 
           {mode === 'add' && (
-            <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <div className={`mt-6 grid gap-3 ${
+              categoryKey === 'power'
+                ? 'sm:grid-cols-2 lg:grid-cols-4'
+                : 'md:grid-cols-2'
+            }`}>
               {selectedCategory.fields.map((field) => (
                 <label key={field.key} className="block">
                   <span className="mb-2 block text-sm font-bold text-zinc-300">{field.label}</span>
@@ -662,6 +697,7 @@ export default function AdminPage() {
                 const respondingAdmin = request.responding_admin_id
                   ? getPlayerName(request.responding_admin_id)
                   : null
+                const isRetrial = retrialRequestIds.includes(request.id)
 
                 return (
                   <article key={request.id} className="rounded-lg bg-zinc-900 p-4">
@@ -671,6 +707,11 @@ export default function AdminPage() {
                         <p className="mt-1 text-sm text-zinc-300">
                           {getCategory(request.category).shortLabel} - {request.region || 'NA'} - {request.code_type} #{request.code_number}
                         </p>
+                        {isRetrial && (
+                          <p className="mt-2 inline-flex rounded bg-purple-500/15 px-2.5 py-1 text-xs font-black uppercase text-purple-300 ring-1 ring-purple-500/30">
+                            Retrial
+                          </p>
+                        )}
                         <p className="mt-1 text-xs text-zinc-500">
                           Requested admin: {requestedAdmin}
                         </p>

@@ -34,6 +34,10 @@ export function calculatePowerElo(
   return Math.round(500 + normalized * 500)
 }
 
+export function averageScores(scores: number[]) {
+  return scores.reduce((total, score) => total + score, 0) / scores.length
+}
+
 export function calculatePassingElo(
   width: number,
   throughBall: number,

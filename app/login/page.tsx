@@ -6,7 +6,7 @@ import { CheckCircle2, Eye, EyeOff, KeyRound, LogIn, User } from 'lucide-react'
 import { AdminLink } from '@/app/AuthNav'
 import { BrandLogo } from '@/app/BrandLogo'
 import { supabase } from '@/lib/supabase'
-import { cleanUsername, usernameToAuthEmail, validateUsername } from '@/lib/usernameAuth'
+import { cleanUsername, validateUsername } from '@/lib/usernameAuth'
 
 const trustedDeviceKey = (userId: string) => `blitztiers-trusted-device-${userId}`
 
@@ -104,6 +104,21 @@ export default function LoginPage() {
     return cleanName
   }
 
+  async function getAuthEmail(cleanName: string) {
+    const response = await fetch('/api/auth-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: cleanName }),
+    })
+    const result = await response.json()
+
+    if (!response.ok || typeof result.email !== 'string') {
+      throw new Error(result.error || 'Could not find that username.')
+    }
+
+    return result.email
+  }
+
   async function createAccount() {
     setError('')
     setMessage('')
@@ -141,8 +156,18 @@ export default function LoginPage() {
       return
     }
 
+    let authEmail = ''
+
+    try {
+      authEmail = await getAuthEmail(cleanName)
+    } catch (authEmailError) {
+      setLoading(false)
+      setError(authEmailError instanceof Error ? authEmailError.message : 'Could not log in to the new account.')
+      return
+    }
+
     const { data, error: signInError } = await supabase.auth.signInWithPassword({
-      email: usernameToAuthEmail(cleanName),
+      email: authEmail,
       password,
     })
     setLoading(false)
@@ -172,8 +197,18 @@ export default function LoginPage() {
     }
 
     setLoading(true)
+    let authEmail = ''
+
+    try {
+      authEmail = await getAuthEmail(cleanName)
+    } catch (authEmailError) {
+      setLoading(false)
+      setError(authEmailError instanceof Error ? authEmailError.message : 'Could not find that username.')
+      return
+    }
+
     const { data, error: signInError } = await supabase.auth.signInWithPassword({
-      email: usernameToAuthEmail(cleanName),
+      email: authEmail,
       password,
     })
     setLoading(false)

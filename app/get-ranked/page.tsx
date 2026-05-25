@@ -45,6 +45,7 @@ export default function GetRankedPage() {
   const [codeType, setCodeType] = useState<CodeType>('calibration')
   const [codeNumber, setCodeNumber] = useState('1')
   const [requestedAdminId, setRequestedAdminId] = useState('')
+  const [alreadyRanked, setAlreadyRanked] = useState(false)
   const [checkingSession, setCheckingSession] = useState(true)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
@@ -116,6 +117,34 @@ export default function GetRankedPage() {
     }
   }, [])
 
+  useEffect(() => {
+    let ignore = false
+
+    async function checkExistingRanking() {
+      if (!currentProfile) {
+        setAlreadyRanked(false)
+        return
+      }
+
+      const { data } = await supabase
+        .from(selectedCategory.table)
+        .select('id')
+        .eq('profile_id', currentProfile.id)
+        .eq('region', region)
+        .maybeSingle()
+
+      if (!ignore) {
+        setAlreadyRanked(Boolean(data))
+      }
+    }
+
+    checkExistingRanking()
+
+    return () => {
+      ignore = true
+    }
+  }, [currentProfile, region, selectedCategory])
+
   async function requestModeration() {
     setError('')
     setMessage('')
@@ -154,7 +183,7 @@ export default function GetRankedPage() {
     }
 
     setMessage(
-      `Request sent for ${selectedCategory.shortLabel} in ${region}, ${codeType} code ${numericCodeNumber}.`
+      `Request sent for ${selectedCategory.shortLabel} in ${region}, ${codeType} code ${numericCodeNumber}${alreadyRanked ? ' as a retrial' : ''}.`
     )
     setRequestedAdminId('')
   }
@@ -204,6 +233,12 @@ export default function GetRankedPage() {
               <div className="rounded-lg bg-zinc-900 p-3 text-sm text-zinc-300">
                 Requesting as <span className="font-bold text-white">{currentProfile.username}</span>
               </div>
+
+              {alreadyRanked && (
+                <p className="rounded-lg border border-purple-500/30 bg-purple-500/10 p-3 text-sm font-bold text-purple-200">
+                  You are already ranked in this category and region. This request will show as a retrial for admins.
+                </p>
+              )}
 
               <label className="block">
                 <span className="mb-2 block text-sm font-bold text-zinc-300">Category</span>

@@ -1,5 +1,6 @@
 import {
   calculateAccuracyElo,
+  averageScores,
   calculateGoalkeepingElo,
   calculatePassingElo,
   calculatePowerElo,
@@ -54,13 +55,26 @@ export const categories: CategoryConfig[] = [
     table: 'power_scores',
     description: 'Measures maximum effective shot velocity up to 55m/s, with moving shots weighted lower.',
     fields: [
-      { key: 'ground', label: 'Ground shot velocity', min: 0, max: 55 },
-      { key: 'air', label: 'Air shot velocity', min: 0, max: 55 },
-      { key: 'movingGround', label: 'Moving ground velocity', min: 0, max: 55 },
-      { key: 'movingAir', label: 'Moving air velocity', min: 0, max: 55 },
+      { key: 'ground1', label: 'Ground shot speed 1', min: 0, max: 55 },
+      { key: 'ground2', label: 'Ground shot speed 2', min: 0, max: 55 },
+      { key: 'ground3', label: 'Ground shot speed 3', min: 0, max: 55 },
+      { key: 'air1', label: 'Air shot speed 1', min: 0, max: 55 },
+      { key: 'air2', label: 'Air shot speed 2', min: 0, max: 55 },
+      { key: 'air3', label: 'Air shot speed 3', min: 0, max: 55 },
+      { key: 'movingGround1', label: 'Moving ground speed 1', min: 0, max: 55 },
+      { key: 'movingGround2', label: 'Moving ground speed 2', min: 0, max: 55 },
+      { key: 'movingGround3', label: 'Moving ground speed 3', min: 0, max: 55 },
+      { key: 'movingAir1', label: 'Moving air speed 1', min: 0, max: 55 },
+      { key: 'movingAir2', label: 'Moving air speed 2', min: 0, max: 55 },
+      { key: 'movingAir3', label: 'Moving air speed 3', min: 0, max: 55 },
     ],
     calculateElo: (values) =>
-      calculatePowerElo(values.ground, values.air, values.movingGround, values.movingAir),
+      calculatePowerElo(
+        averageScores([values.ground1, values.ground2, values.ground3]),
+        averageScores([values.air1, values.air2, values.air3]),
+        averageScores([values.movingGround1, values.movingGround2, values.movingGround3]),
+        averageScores([values.movingAir1, values.movingAir2, values.movingAir3])
+      ),
   },
   {
     key: 'passing',
