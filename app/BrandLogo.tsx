@@ -18,7 +18,7 @@ export function BrandLogo({ compact = false }: BrandLogoProps) {
         width={1774}
         height={887}
         priority
-        className={`${compact ? 'h-9 w-[4.5rem]' : 'h-12 w-24 sm:h-14 sm:w-28'} object-cover`}
+        className={`${compact ? 'h-14 w-28 sm:h-16 sm:w-32' : 'h-16 w-32 sm:h-20 sm:w-40'} object-contain`}
       />
     </Link>
   )
