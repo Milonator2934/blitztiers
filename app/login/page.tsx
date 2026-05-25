@@ -1,18 +1,14 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckCircle2, Eye, EyeOff, KeyRound, LogIn, Mail, ShieldCheck, User } from 'lucide-react'
+import { CheckCircle2, Eye, EyeOff, KeyRound, LogIn, User } from 'lucide-react'
 import { AdminLink } from '@/app/AuthNav'
 import { BrandLogo } from '@/app/BrandLogo'
 import { supabase } from '@/lib/supabase'
+import { cleanUsername, usernameToAuthEmail, validateUsername } from '@/lib/usernameAuth'
 
-type SignupStep = 'credentials' | 'verify' | 'username' | 'complete'
-
-const otpCodeLength = 8
 const trustedDeviceKey = (userId: string) => `blitztiers-trusted-device-${userId}`
-const otpCooldownKey = (email: string) => `blitztiers-otp-cooldown-${email.toLowerCase()}`
-const otpCooldownSeconds = 60
 
 async function getDeviceFingerprint() {
   const response = await fetch('/api/client-fingerprint', { cache: 'no-store' })
@@ -38,24 +34,14 @@ async function rememberTrustedDevice(userId: string) {
 
 export default function LoginPage() {
   const router = useRouter()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [verificationCode, setVerificationCode] = useState('')
   const [username, setUsername] = useState('')
-  const [signupStep, setSignupStep] = useState<SignupStep>('credentials')
+  const [password, setPassword] = useState('')
   const [confirmedUsernameWarning, setConfirmedUsernameWarning] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [loggedInEmail, setLoggedInEmail] = useState<string | null>(null)
-  const [verifiedUserId, setVerifiedUserId] = useState<string | null>(null)
-  const [otpCooldownRemaining, setOtpCooldownRemaining] = useState(0)
-
-  const cleanCode = useMemo(
-    () => verificationCode.replace(/\D/g, '').slice(0, otpCodeLength),
-    [verificationCode]
-  )
+  const [loggedInUsername, setLoggedInUsername] = useState<string | null>(null)
 
   useEffect(() => {
     let ignore = false
@@ -86,7 +72,13 @@ export default function LoginPage() {
         localStorage.setItem(trustedDeviceKey(session.user.id), currentFingerprint)
       }
 
-      setLoggedInEmail(session.user.email || null)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', session.user.id)
+        .maybeSingle()
+
+      setLoggedInUsername(profile?.username || session.user.user_metadata?.username || 'your account')
       setMessage('You are already logged in on this trusted device.')
     })
 
@@ -95,134 +87,30 @@ export default function LoginPage() {
     }
   }, [])
 
-  useEffect(() => {
-    if (!email) {
-      return
+  function validateCredentials() {
+    const cleanName = cleanUsername(username)
+    const usernameError = validateUsername(cleanName)
+
+    if (usernameError) {
+      setError(usernameError)
+      return null
     }
 
-    const updateCooldown = () => {
-      const cooldownUntil = Number(localStorage.getItem(otpCooldownKey(email)) || 0)
-      const remaining = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000))
-      setOtpCooldownRemaining(remaining)
+    if (!password) {
+      setError('Enter your password.')
+      return null
     }
 
-    updateCooldown()
-    const interval = window.setInterval(updateCooldown, 1000)
-
-    return () => window.clearInterval(interval)
-  }, [email])
-
-  function startOtpCooldown() {
-    const cooldownUntil = Date.now() + otpCooldownSeconds * 1000
-    localStorage.setItem(otpCooldownKey(email), String(cooldownUntil))
-    setOtpCooldownRemaining(otpCooldownSeconds)
+    return cleanName
   }
 
-  function showAuthError(message: string) {
-    if (message.toLowerCase().includes('rate limit')) {
-      setError('Email code limit reached. Please wait a minute before requesting another code.')
-      startOtpCooldown()
-      return
-    }
-
-    setError(message)
-  }
-
-  async function signUp() {
+  async function createAccount() {
     setError('')
     setMessage('')
 
-    if (!email || !password) {
-      setError('Enter an email and password first.')
-      return
-    }
+    const cleanName = validateCredentials()
 
-    if (otpCooldownRemaining > 0) {
-      setError(`Please wait ${otpCooldownRemaining}s before requesting another verification code.`)
-      return
-    }
-
-    setLoading(true)
-    const { error: signUpError } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: true,
-      },
-    })
-    setLoading(false)
-
-    if (signUpError) {
-      showAuthError(signUpError.message)
-      return
-    }
-
-    setSignupStep('verify')
-    setMessage(`Check your email for the ${otpCodeLength} digit verification code.`)
-    startOtpCooldown()
-  }
-
-  async function verifyEmailCode() {
-    setError('')
-    setMessage('')
-
-    if (cleanCode.length !== otpCodeLength) {
-      setError(`Enter the ${otpCodeLength} digit code from your email.`)
-      return
-    }
-
-    setLoading(true)
-    const { data, error: verifyError } = await supabase.auth.verifyOtp({
-      email,
-      token: cleanCode,
-      type: 'email',
-    })
-    setLoading(false)
-
-    if (verifyError) {
-      setError(verifyError.message)
-      return
-    }
-
-    const { error: passwordError } = await supabase.auth.updateUser({
-      password,
-    })
-
-    if (passwordError) {
-      setError(passwordError.message)
-      return
-    }
-
-    const userId = data.user?.id
-
-    if (!userId) {
-      setError('Email verified, but the user session was not returned. Try logging in.')
-      return
-    }
-
-    setVerifiedUserId(userId)
-    await rememberTrustedDevice(userId)
-    setSignupStep('username')
-    setMessage('Email verified. Choose your leaderboard username.')
-  }
-
-  async function saveUsername() {
-    setError('')
-    setMessage('')
-
-    const cleanUsername = username.trim()
-
-    if (!verifiedUserId) {
-      setError('Verify your email before choosing a username.')
-      return
-    }
-
-    if (cleanUsername.length < 3 || cleanUsername.length > 24) {
-      setError('Usernames must be 3 to 24 characters long.')
-      return
-    }
-
-    if (!/^[a-zA-Z0-9_]+$/.test(cleanUsername)) {
-      setError('Use only letters, numbers, and underscores.')
+    if (!cleanName) {
       return
     }
 
@@ -232,7 +120,7 @@ export default function LoginPage() {
     }
 
     const sure = window.confirm(
-      `"${cleanUsername}" will represent you on public leaderboards. Are you sure you want this username?`
+      `"${cleanName}" will represent you on public leaderboards. Are you sure you want this username?`
     )
 
     if (!sure) {
@@ -240,89 +128,64 @@ export default function LoginPage() {
     }
 
     setLoading(true)
-    const { data: existingUsers, error: existingError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('username', cleanUsername)
-      .limit(1)
-
-    if (existingError) {
-      setLoading(false)
-      setError(existingError.message)
-      return
-    }
-
-    if (existingUsers && existingUsers.length > 0) {
-      setLoading(false)
-      setError('That username is already taken.')
-      return
-    }
-
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert({ id: verifiedUserId, username: cleanUsername })
-
-    if (profileError) {
-      setLoading(false)
-      setError(profileError.message)
-      return
-    }
-
-    await supabase.auth.updateUser({
-      data: { username: cleanUsername },
+    const response = await fetch('/api/create-account', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: cleanName, password }),
     })
+    const result = await response.json()
 
+    if (!response.ok) {
+      setLoading(false)
+      setError(result.error || 'Could not create account.')
+      return
+    }
+
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
+      email: usernameToAuthEmail(cleanName),
+      password,
+    })
     setLoading(false)
-    setSignupStep('complete')
-    setLoggedInEmail(email)
-    setMessage('Account created and verified. You are logged in on this trusted device.')
-    router.replace('/')
-    router.refresh()
+
+    if (signInError) {
+      setError(`Account created, but login failed: ${signInError.message}`)
+      return
+    }
+
+    if (data.user) {
+      await rememberTrustedDevice(data.user.id)
+      setLoggedInUsername(cleanName)
+      setMessage('Account created. You are logged in on this trusted device.')
+      router.replace('/')
+      router.refresh()
+    }
   }
 
   async function signIn() {
     setError('')
     setMessage('')
 
-    if (!email || !password) {
-      setError('Enter your email and password.')
+    const cleanName = validateCredentials()
+
+    if (!cleanName) {
       return
     }
 
     setLoading(true)
     const { data, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
+      email: usernameToAuthEmail(cleanName),
       password,
     })
     setLoading(false)
 
     if (signInError) {
-      setError(signInError.message)
+      setError('Username or password is incorrect.')
       return
     }
 
     if (data.user) {
       await rememberTrustedDevice(data.user.id)
-
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('id', data.user.id)
-        .maybeSingle()
-
-      if (profileError) {
-        setError(profileError.message)
-        return
-      }
-
-      setLoggedInEmail(data.user.email || email)
-      if (!profile?.username && !data.user.user_metadata?.username) {
-        setVerifiedUserId(data.user.id)
-        setSignupStep('username')
-        setMessage('Logged in. Choose your leaderboard username so the site can recognize you as a player.')
-        return
-      }
-
+      setLoggedInUsername(cleanName)
       setMessage('Logged in. This device/IP is now remembered.')
       router.replace('/')
       router.refresh()
@@ -331,7 +194,7 @@ export default function LoginPage() {
 
   async function signOut() {
     await supabase.auth.signOut()
-    setLoggedInEmail(null)
+    setLoggedInUsername(null)
     setMessage('Logged out.')
   }
 
@@ -347,98 +210,48 @@ export default function LoginPage() {
         <div className="mt-6 space-y-4">
           <label className="block">
             <span className="mb-2 flex items-center gap-2 text-sm font-bold text-zinc-300">
-              <Mail size={16} /> Email
+              <User size={16} /> Username
             </span>
             <input
               className="w-full rounded bg-zinc-900 p-3 outline-none ring-1 ring-zinc-800 focus:ring-blue-500"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              placeholder="Leaderboard username"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
             />
           </label>
 
-          {signupStep === 'credentials' && (
-            <label className="block">
-              <span className="mb-2 flex items-center gap-2 text-sm font-bold text-zinc-300">
-                <KeyRound size={16} /> Password
-              </span>
-              <div className="flex rounded bg-zinc-900 ring-1 ring-zinc-800 focus-within:ring-blue-500">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  className="min-w-0 flex-1 rounded bg-transparent p-3 outline-none"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((current) => !current)}
-                  className="flex w-12 items-center justify-center text-zinc-300 hover:text-white"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </label>
-          )}
-
-          {signupStep === 'verify' && (
-            <div className="space-y-3">
-              <label className="block">
-                <span className="mb-2 flex items-center gap-2 text-sm font-bold text-zinc-300">
-                  <ShieldCheck size={16} /> Verification code
-                </span>
-                <input
-                  inputMode="numeric"
-                  className="w-full rounded bg-zinc-900 p-3 text-center text-xl font-black tracking-[0.2em] outline-none ring-1 ring-zinc-800 focus:ring-blue-500 sm:text-2xl sm:tracking-[0.3em]"
-                  placeholder="00000000"
-                  value={cleanCode}
-                  onChange={(event) => setVerificationCode(event.target.value)}
-                />
-              </label>
-
+          <label className="block">
+            <span className="mb-2 flex items-center gap-2 text-sm font-bold text-zinc-300">
+              <KeyRound size={16} /> Password
+            </span>
+            <div className="flex rounded bg-zinc-900 ring-1 ring-zinc-800 focus-within:ring-blue-500">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                className="min-w-0 flex-1 rounded bg-transparent p-3 outline-none"
+                placeholder="Password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
               <button
                 type="button"
-                onClick={signUp}
-                disabled={loading || otpCooldownRemaining > 0}
-                className="w-full rounded bg-zinc-800 p-3 text-sm font-bold text-zinc-200 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={() => setShowPassword((current) => !current)}
+                className="flex w-12 items-center justify-center text-zinc-300 hover:text-white"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                {otpCooldownRemaining > 0
-                  ? `Resend code in ${otpCooldownRemaining}s`
-                  : 'Resend verification code'}
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
-          )}
+          </label>
 
-          {signupStep === 'username' && (
-            <div className="space-y-4">
-              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100">
-                Your username will appear directly on public leaderboards and should reflect how you want other players to see you.
-              </div>
-
-              <label className="block">
-                <span className="mb-2 flex items-center gap-2 text-sm font-bold text-zinc-300">
-                  <User size={16} /> Username
-                </span>
-                <input
-                  className="w-full rounded bg-zinc-900 p-3 outline-none ring-1 ring-zinc-800 focus:ring-blue-500"
-                  placeholder="Leaderboard username"
-                  value={username}
-                  onChange={(event) => setUsername(event.target.value)}
-                />
-              </label>
-
-              <label className="flex items-start gap-3 rounded-lg bg-zinc-900 p-3 text-sm text-zinc-300">
-                <input
-                  type="checkbox"
-                  className="mt-1"
-                  checked={confirmedUsernameWarning}
-                  onChange={(event) => setConfirmedUsernameWarning(event.target.checked)}
-                />
-                <span>I understand this username will represent me on the leaderboard.</span>
-              </label>
-            </div>
-          )}
+          <label className="flex items-start gap-3 rounded-lg bg-zinc-900 p-3 text-sm text-zinc-300">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={confirmedUsernameWarning}
+              onChange={(event) => setConfirmedUsernameWarning(event.target.checked)}
+            />
+            <span>I understand this username will represent me on the leaderboard.</span>
+          </label>
 
           {message && (
             <p className="rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-200">
@@ -452,54 +265,30 @@ export default function LoginPage() {
             </p>
           )}
 
-          {loggedInEmail && (
+          {loggedInUsername && (
             <div className="rounded-lg bg-zinc-900 p-3 text-sm text-zinc-300">
-              Signed in as <span className="font-bold text-white">{loggedInEmail}</span>
+              Signed in as <span className="font-bold text-white">{loggedInUsername}</span>
             </div>
           )}
 
           <div className="space-y-3 pt-2">
-            {signupStep === 'credentials' && (
-              <>
-                <button
-                  onClick={signIn}
-                  disabled={loading}
-                  className="flex w-full items-center justify-center gap-2 rounded bg-blue-600 p-3 font-bold hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <LogIn size={18} /> Login
-                </button>
+            <button
+              onClick={signIn}
+              disabled={loading}
+              className="flex w-full items-center justify-center gap-2 rounded bg-blue-600 p-3 font-bold hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <LogIn size={18} /> Login
+            </button>
 
-                <button
-                  onClick={signUp}
-                  disabled={loading || otpCooldownRemaining > 0}
-                  className="flex w-full items-center justify-center gap-2 rounded bg-green-600 p-3 font-bold hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <Mail size={18} /> {otpCooldownRemaining > 0 ? `Create Account (${otpCooldownRemaining}s)` : 'Create Account'}
-                </button>
-              </>
-            )}
+            <button
+              onClick={createAccount}
+              disabled={loading}
+              className="flex w-full items-center justify-center gap-2 rounded bg-green-600 p-3 font-bold hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <CheckCircle2 size={18} /> Create Account
+            </button>
 
-            {signupStep === 'verify' && (
-              <button
-                onClick={verifyEmailCode}
-                disabled={loading}
-                className="flex w-full items-center justify-center gap-2 rounded bg-blue-600 p-3 font-bold hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <ShieldCheck size={18} /> Verify Email
-              </button>
-            )}
-
-            {signupStep === 'username' && (
-              <button
-                onClick={saveUsername}
-                disabled={loading}
-                className="flex w-full items-center justify-center gap-2 rounded bg-green-600 p-3 font-bold hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <CheckCircle2 size={18} /> Save Username
-              </button>
-            )}
-
-            {loggedInEmail && (
+            {loggedInUsername && (
               <button
                 onClick={signOut}
                 className="w-full rounded bg-zinc-800 p-3 font-bold hover:bg-zinc-700"
