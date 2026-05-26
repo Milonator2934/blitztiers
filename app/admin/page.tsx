@@ -31,6 +31,15 @@ type ModerationRequest = {
   responded_at?: string | null
 }
 
+type ChatMessage = {
+  id: string
+  request_id: string
+  sender_id: string
+  body: string
+  created_at: string
+  profiles?: { username: string } | { username: string }[] | null
+}
+
 const scoreDeleteOwnerColumns = ['profile_id', 'player_id', 'id']
 
 function mergeUniquePlayers(players: Player[], fallbackPlayer: Player | null) {
@@ -137,6 +146,14 @@ async function deleteScore(table: string, playerId: string, region: RankingRegio
   return `Could not remove the ranking. Make sure ${table} has a profile_id, player_id, or id column linked to profiles. Supabase errors: ${errors.join(' | ')}`
 }
 
+function getMessageSenderName(profile: ChatMessage['profiles'], fallback: string) {
+  if (Array.isArray(profile)) {
+    return profile[0]?.username || fallback
+  }
+
+  return profile?.username || fallback
+}
+
 export default function AdminPage() {
   const [players, setPlayers] = useState<Player[]>([])
   const [currentProfile, setCurrentProfile] = useState<Player | null>(null)
@@ -151,10 +168,12 @@ export default function AdminPage() {
   const [rankingRegion, setRankingRegion] = useState<RankingRegion>('NA')
   const [scoreValues, setScoreValues] = useState<Record<string, string>>({})
   const [requestResponses, setRequestResponses] = useState<Record<string, string>>({})
+  const [requestChatDrafts, setRequestChatDrafts] = useState<Record<string, string>>({})
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [requestError, setRequestError] = useState('')
   const [moderationRequests, setModerationRequests] = useState<ModerationRequest[]>([])
+  const [requestChatMessages, setRequestChatMessages] = useState<Record<string, ChatMessage[]>>({})
   const [retrialRequestIds, setRetrialRequestIds] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -235,6 +254,29 @@ export default function AdminPage() {
 
       const nextRetrialRequestIds: string[] = []
       const loadedRequests = (requests || []) as ModerationRequest[]
+      const requestIds = loadedRequests.map((request) => request.id)
+      let chatMessagesByRequest: Record<string, ChatMessage[]> = {}
+      let chatError = ''
+
+      if (requestIds.length > 0) {
+        const { data: chatMessages, error: chatMessagesError } = await supabase
+          .from('moderation_request_messages')
+          .select('id, request_id, sender_id, body, created_at, profiles!moderation_request_messages_sender_id_fkey(username)')
+          .in('request_id', requestIds)
+          .order('created_at', { ascending: true })
+
+        chatError = chatMessagesError?.message.includes("Could not find the table")
+          ? 'The moderation_request_messages table is missing in Supabase. Run supabase/migrations/0006_create_moderation_request_messages.sql in the Supabase SQL editor, then reload this page.'
+          : chatMessagesError?.message || ''
+
+        chatMessagesByRequest = ((chatMessages || []) as unknown as ChatMessage[]).reduce(
+          (groups, chatMessage) => ({
+            ...groups,
+            [chatMessage.request_id]: [...(groups[chatMessage.request_id] || []), chatMessage],
+          }),
+          {} as Record<string, ChatMessage[]>
+        )
+      }
 
       await Promise.all(
         categories.map(async (category) => {
@@ -267,11 +309,12 @@ export default function AdminPage() {
         setCurrentProfile(fallbackProfile)
         setPlayers(playerList)
         setModerationRequests(loadedRequests)
+        setRequestChatMessages(chatMessagesByRequest)
         setRetrialRequestIds(nextRetrialRequestIds)
         setRequestError(
           requestsError?.message.includes("Could not find the table")
             ? 'The moderation_requests table is missing in Supabase. Run supabase/migrations/0001_create_moderation_requests.sql in the Supabase SQL editor, then reload this page.'
-            : requestsError?.message || ''
+            : requestsError?.message || chatError
         )
         setSelectedPlayerId(playerList[0]?.id || '')
         setSelectedAdminId(playerList[0]?.id || '')
@@ -451,6 +494,13 @@ export default function AdminPage() {
     }))
   }
 
+  function updateRequestChatDraft(requestId: string, value: string) {
+    setRequestChatDrafts((current) => ({
+      ...current,
+      [requestId]: value,
+    }))
+  }
+
   async function respondToModerationRequest(requestId: string) {
     setError('')
     setMessage('')
@@ -498,6 +548,55 @@ export default function AdminPage() {
       )
     )
     setMessage('Response sent to the moderation request.')
+  }
+
+  async function sendRequestChatMessage(requestId: string) {
+    setError('')
+    setMessage('')
+
+    if (!isAdmin || !currentProfile) {
+      setError('You do not have access to this admin action.')
+      return
+    }
+
+    const body = requestChatDrafts[requestId]?.trim()
+
+    if (!body) {
+      setError('Write a chat message before sending it.')
+      return
+    }
+
+    setLoading(true)
+    const { data, error: chatError } = await supabase
+      .from('moderation_request_messages')
+      .insert({
+        request_id: requestId,
+        sender_id: currentProfile.id,
+        body,
+      })
+      .select('id, request_id, sender_id, body, created_at, profiles!moderation_request_messages_sender_id_fkey(username)')
+      .single()
+    setLoading(false)
+
+    if (chatError) {
+      setError(
+        chatError.message.includes("Could not find the table")
+          ? 'Admin chat is not set up yet. Run supabase/migrations/0006_create_moderation_request_messages.sql in Supabase, then try again.'
+          : chatError.message
+      )
+      return
+    }
+
+    const nextMessage = data as unknown as ChatMessage
+    setRequestChatMessages((current) => ({
+      ...current,
+      [requestId]: [...(current[requestId] || []), nextMessage],
+    }))
+    setRequestChatDrafts((current) => ({
+      ...current,
+      [requestId]: '',
+    }))
+    setMessage('Chat message sent.')
   }
 
   function getPlayerName(playerId?: string | null) {
@@ -698,6 +797,7 @@ export default function AdminPage() {
                   ? getPlayerName(request.responding_admin_id)
                   : null
                 const isRetrial = retrialRequestIds.includes(request.id)
+                const chatMessages = requestChatMessages[request.id] || []
 
                 return (
                   <article key={request.id} className="rounded-lg bg-zinc-900 p-4">
@@ -752,6 +852,54 @@ export default function AdminPage() {
                         </button>
                       </div>
                     )}
+
+                    <div className="mt-4 rounded bg-black/20 p-3">
+                      <p className="mb-3 font-bold text-white">Admin chat</p>
+                      <div className="max-h-52 space-y-3 overflow-y-auto">
+                        {chatMessages.length === 0 ? (
+                          <p className="text-sm text-zinc-400">No chat messages yet.</p>
+                        ) : (
+                          chatMessages.map((chatMessage) => {
+                            const isAdminMessage = chatMessage.sender_id === currentProfile?.id
+
+                            return (
+                              <div
+                                key={chatMessage.id}
+                                className={`rounded p-3 text-sm ${
+                                  isAdminMessage ? 'bg-blue-600 text-white' : 'bg-zinc-950 text-zinc-200'
+                                }`}
+                              >
+                                <div className="mb-1 flex flex-wrap items-center justify-between gap-2 text-xs opacity-75">
+                                  <span>
+                                    {isAdminMessage
+                                      ? 'You'
+                                      : getMessageSenderName(chatMessage.profiles, getPlayerName(chatMessage.sender_id))}
+                                  </span>
+                                  <span>{new Date(chatMessage.created_at).toLocaleString()}</span>
+                                </div>
+                                <p className="whitespace-pre-wrap break-words">{chatMessage.body}</p>
+                              </div>
+                            )
+                          })
+                        )}
+                      </div>
+
+                      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                        <textarea
+                          className="min-h-20 flex-1 rounded bg-zinc-950 p-3 text-sm outline-none ring-1 ring-zinc-800 focus:ring-blue-500"
+                          placeholder="Message this player"
+                          value={requestChatDrafts[request.id] || ''}
+                          onChange={(event) => updateRequestChatDraft(request.id, event.target.value)}
+                        />
+                        <button
+                          onClick={() => sendRequestChatMessage(request.id)}
+                          disabled={loading || !requestChatDrafts[request.id]?.trim()}
+                          className="flex items-center justify-center gap-2 rounded bg-blue-600 px-4 py-2.5 text-sm font-bold hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60 sm:self-end"
+                        >
+                          <CheckCircle2 size={16} /> Send
+                        </button>
+                      </div>
+                    </div>
                   </article>
                 )
               })}

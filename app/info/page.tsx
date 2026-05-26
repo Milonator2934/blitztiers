@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { AdminLink, AuthNav } from '@/app/AuthNav'
 import { BrandLogo } from '@/app/BrandLogo'
 
@@ -6,7 +5,7 @@ const measurements = [
   {
     title: 'Overall',
     summary:
-      'Overall is the average of a player\'s ELO scores across every category they have been ranked in.',
+      'Overall is the average of a player\'s ranked ELO scores, minus 50 ELO for each unfinished category.',
     details: [
       'A player with scores in more categories has a fuller overall profile.',
       'Higher category ELO scores raise the overall average.',

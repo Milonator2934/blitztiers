@@ -91,6 +91,7 @@ export async function getLeaderboardCount(
 
 export async function getOverallLeaderboardPlayers(region: LeaderboardRegion = 'Global') {
   const players = new Map<string, OverallPlayer>()
+  const missingCategoryPenalty = 50
 
   await Promise.all(
     categories.map(async (category) => {
@@ -121,9 +122,10 @@ export async function getOverallLeaderboardPlayers(region: LeaderboardRegion = '
   return Array.from(players.values())
     .map((player) => {
       const scores = Object.values(player.scores)
+      const missingCategories = categories.length - scores.length
       const averageElo = Math.round(
         scores.reduce((total, elo) => total + elo, 0) / scores.length
-      )
+      ) - missingCategories * missingCategoryPenalty
 
       return {
         ...player,

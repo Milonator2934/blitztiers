@@ -185,6 +185,7 @@ export default function GetRankedPage() {
     setMessage(
       `Request sent for ${selectedCategory.shortLabel} in ${region}, ${codeType} code ${numericCodeNumber}${alreadyRanked ? ' as a retrial' : ''}.`
     )
+    window.dispatchEvent(new Event('moderation-request-created'))
     setRequestedAdminId('')
   }
 

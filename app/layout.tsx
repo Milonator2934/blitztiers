@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { AdminChatButton } from "@/app/AdminChatButton";
 import { SponsorFooter } from "@/app/SponsorFooter";
 import "./globals.css";
 
@@ -30,6 +31,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         {children}
+        <AdminChatButton />
         <SponsorFooter />
       </body>
     </html>

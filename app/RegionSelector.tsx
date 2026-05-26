@@ -15,20 +15,18 @@ function readRegionFromUrl() {
 }
 
 export function RegionSelector() {
-  const [selectedRegion, setSelectedRegion] = useState<LeaderboardRegion>('Global')
+  const [selectedRegion, setSelectedRegion] = useState<LeaderboardRegion>(() => readRegionFromUrl())
 
   useEffect(() => {
     const urlRegion = readRegionFromUrl()
     const storedRegion = window.localStorage.getItem(regionStorageKey)
 
     if (urlRegion !== 'Global') {
-      setSelectedRegion(urlRegion)
       window.localStorage.setItem(regionStorageKey, urlRegion)
       return
     }
 
     if (storedRegion === 'NA' || storedRegion === 'EU') {
-      setSelectedRegion(storedRegion)
       const url = new URL(window.location.href)
       url.searchParams.set('region', storedRegion)
       window.location.replace(`${url.pathname}${url.search}${url.hash}`)
@@ -46,7 +44,7 @@ export function RegionSelector() {
       url.searchParams.set('region', region)
     }
 
-    window.location.href = `${url.pathname}${url.search}${url.hash}`
+    window.location.assign(`${url.pathname}${url.search}${url.hash}`)
   }
 
   return (

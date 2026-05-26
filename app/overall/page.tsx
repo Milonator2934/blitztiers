@@ -25,7 +25,7 @@ export default async function OverallPage({ searchParams }: PageProps) {
           </div>
           <h1 className="mt-3 text-3xl font-black sm:text-4xl md:text-5xl">Overall Rankings</h1>
           <p className="mt-3 max-w-2xl text-zinc-400">
-            Total rank based on each player&apos;s average ELO across ranked categories. Showing {region} rankings.
+            Total rank based on each player&apos;s average ELO across ranked categories, minus 50 ELO for each unfinished category. Showing {region} rankings.
           </p>
         </div>
 
