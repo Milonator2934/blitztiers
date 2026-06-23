@@ -14,6 +14,7 @@ type PageProps = {
 export default async function OverallPage({ searchParams }: PageProps) {
   const region = getLeaderboardRegion((await searchParams).region)
   const players = await getOverallLeaderboardPlayers(region)
+  const columnCount = 4 + categories.length
 
   return (
     <main className="min-h-screen bg-black p-4 text-white sm:p-6 md:p-10">
@@ -49,7 +50,7 @@ export default async function OverallPage({ searchParams }: PageProps) {
           <tbody>
             {players.length === 0 ? (
               <tr>
-                <td className="p-6 text-zinc-400" colSpan={8}>
+                <td className="p-6 text-zinc-400" colSpan={columnCount}>
                   No ranked players yet.
                 </td>
               </tr>
@@ -63,7 +64,7 @@ export default async function OverallPage({ searchParams }: PageProps) {
                   </td>
                   <td className="p-4">{player.username}</td>
                   <td className="p-4 font-bold">{player.averageElo}</td>
-                  <td className="p-4 text-zinc-300">{player.rankedCategories}/4</td>
+                  <td className="p-4 text-zinc-300">{player.rankedCategories}/{categories.length}</td>
                   {categories.map((category) => (
                     <td key={category.key} className="p-4 text-zinc-300">
                       {player.scores[category.key] ?? '-'}

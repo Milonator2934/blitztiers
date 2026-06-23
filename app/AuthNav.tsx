@@ -104,8 +104,8 @@ export function AuthNav() {
         <Link href={`/power${regionQuery}`} className="hover:text-white">Power</Link>
         <Link href={`/passing${regionQuery}`} className="hover:text-white">Passing</Link>
         <Link href={`/goalkeeping${regionQuery}`} className="hover:text-white">Goalkeeping</Link>
-        <Link href="/dribbling" className="hover:text-white">Dribbling</Link>
-        <Link href="/defending" className="hover:text-white">Defending</Link>
+        <Link href={`/dribbling${regionQuery}`} className="hover:text-white">Dribbling</Link>
+        <Link href={`/defending${regionQuery}`} className="hover:text-white">Defending</Link>
         <Link href="/get-ranked" className="font-bold text-blue-300 hover:text-blue-200">Get Ranked</Link>
         <Link href="/info" className="hover:text-white">Info</Link>
         <Link href="/login" className="font-bold text-white hover:text-blue-300">

@@ -22,9 +22,12 @@ export function RegionSelector() {
     const storedRegion = window.localStorage.getItem(regionStorageKey)
 
     if (urlRegion !== 'Global') {
+      setSelectedRegion(urlRegion)
       window.localStorage.setItem(regionStorageKey, urlRegion)
       return
     }
+
+    setSelectedRegion('Global')
 
     if (storedRegion === 'NA' || storedRegion === 'EU') {
       const url = new URL(window.location.href)
