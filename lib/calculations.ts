@@ -67,3 +67,9 @@ export function calculateGoalkeepingElo(
 
   return Math.round(500 + saveRate * 500)
 }
+
+export function calculateOutOf20Elo(successes: number) {
+  const normalized = successes / 20
+
+  return Math.round(500 + normalized * 500)
+}

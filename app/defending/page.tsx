@@ -1,10 +1,23 @@
-import { ComingSoonPage } from '@/app/coming-soon/ComingSoonPage'
+import { LeaderboardPage } from '@/lib/leaderboards'
+import { getLeaderboardRegion } from '@/lib/regions'
 
-export default function DefendingPage() {
+export const dynamic = 'force-dynamic'
+
+type PageProps = {
+  searchParams: Promise<{ region?: string | string[] }>
+}
+
+export default async function DefendingPage({ searchParams }: PageProps) {
+  const region = getLeaderboardRegion((await searchParams).region)
+
   return (
-    <ComingSoonPage
-      title="Defending Rankings"
-      description="Defending tests are being built and will be added once the scoring format is ready."
+    <LeaderboardPage
+      region={region}
+      config={{
+        title: 'Defending Rankings',
+        table: 'defending_scores',
+        description: 'Defending rankings from 20 attempts to stop an attacker.',
+      }}
     />
   )
 }

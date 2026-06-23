@@ -1,10 +1,23 @@
-import { ComingSoonPage } from '@/app/coming-soon/ComingSoonPage'
+import { LeaderboardPage } from '@/lib/leaderboards'
+import { getLeaderboardRegion } from '@/lib/regions'
 
-export default function DribblingPage() {
+export const dynamic = 'force-dynamic'
+
+type PageProps = {
+  searchParams: Promise<{ region?: string | string[] }>
+}
+
+export default async function DribblingPage({ searchParams }: PageProps) {
+  const region = getLeaderboardRegion((await searchParams).region)
+
   return (
-    <ComingSoonPage
-      title="Dribbling Rankings"
-      description="Dribbling tests are being built and will be added once the scoring format is ready."
+    <LeaderboardPage
+      region={region}
+      config={{
+        title: 'Dribbling Rankings',
+        table: 'dribbling_scores',
+        description: 'Dribbling rankings from 20 attempts to get past a defender.',
+      }}
     />
   )
 }

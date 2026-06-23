@@ -375,8 +375,14 @@ export default function AdminPage() {
 
     for (const field of selectedCategory.fields) {
       const value = Number(scoreValues[field.key])
+      const min = field.min ?? 0
 
-      if (!Number.isFinite(value) || value < 0) {
+      if (
+        !Number.isFinite(value) ||
+        value < min ||
+        (field.max !== undefined && value > field.max) ||
+        (field.integer && !Number.isInteger(value))
+      ) {
         return null
       }
 
@@ -424,7 +430,7 @@ export default function AdminPage() {
 
     if (!numericValues) {
       setLoading(false)
-      setError('Enter every score result as a positive number.')
+      setError('Enter every score result within the allowed range.')
       return
     }
 
@@ -753,6 +759,7 @@ export default function AdminPage() {
                     type="number"
                     min={field.min ?? 0}
                     max={field.max}
+                    step={field.integer ? 1 : undefined}
                     className="w-full rounded bg-zinc-900 p-3 outline-none ring-1 ring-zinc-800 focus:ring-blue-500"
                     value={scoreValues[field.key] || ''}
                     onChange={(event) => updateScoreValue(field.key, event.target.value)}

@@ -53,7 +53,7 @@ the page in production:
 create table if not exists moderation_requests (
   id uuid primary key default gen_random_uuid(),
   requester_id uuid not null references profiles(id) on delete cascade,
-  category text not null check (category in ('accuracy', 'goalkeeping', 'passing', 'power')),
+  category text not null check (category in ('accuracy', 'goalkeeping', 'passing', 'power', 'dribbling', 'defending')),
   code_type text not null check (code_type in ('calibration', 'clubhouse', 'golf club', 'freerunners', 'girls who drift')),
   code_number integer not null check (code_number between 1 and 24),
   requested_admin_id uuid references profiles(id) on delete set null,

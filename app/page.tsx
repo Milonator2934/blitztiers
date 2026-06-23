@@ -11,19 +11,6 @@ type PageProps = {
   searchParams: Promise<{ region?: string | string[] }>
 }
 
-const comingSoonCategories = [
-  {
-    key: 'dribbling',
-    label: 'Dribbling',
-    description: 'Dribbling rankings are coming soon.',
-  },
-  {
-    key: 'defending',
-    label: 'Defending',
-    description: 'Defending rankings are coming soon.',
-  },
-]
-
 export default async function HomePage({ searchParams }: PageProps) {
   const region = getLeaderboardRegion((await searchParams).region)
   const counts = await Promise.all(
@@ -101,16 +88,6 @@ export default async function HomePage({ searchParams }: PageProps) {
           )
         })}
 
-        {comingSoonCategories.map((category) => (
-          <Link
-            href={`/${category.key}`}
-            key={category.key}
-            className="rounded-lg bg-zinc-900 p-5 hover:bg-zinc-800 sm:p-8"
-          >
-            <h3 className="mb-4 text-2xl font-bold sm:text-3xl">{category.label}</h3>
-            <p className="text-zinc-400">{category.description}</p>
-          </Link>
-        ))}
       </section>
     </main>
   )

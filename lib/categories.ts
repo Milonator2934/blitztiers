@@ -2,17 +2,19 @@ import {
   calculateAccuracyElo,
   averageScores,
   calculateGoalkeepingElo,
+  calculateOutOf20Elo,
   calculatePassingElo,
   calculatePowerElo,
 } from '@/lib/calculations'
 
-export type CategoryKey = 'accuracy' | 'goalkeeping' | 'passing' | 'power'
+export type CategoryKey = 'accuracy' | 'goalkeeping' | 'passing' | 'power' | 'dribbling' | 'defending'
 
 export type ScoreField = {
   key: string
   label: string
   min?: number
   max?: number
+  integer?: boolean
 }
 
 export type CategoryConfig = {
@@ -122,6 +124,28 @@ export const categories: CategoryConfig[] = [
       { key: 'goalsAllowed', label: 'Goals allowed' },
     ],
     calculateElo: (values) => calculateGoalkeepingElo(values.saves, values.goalsAllowed),
+  },
+  {
+    key: 'dribbling',
+    label: 'Dribbling',
+    shortLabel: 'Dribbling',
+    table: 'dribbling_scores',
+    description: 'Ranks how often a player dribbles past a defender in 20 attempts.',
+    fields: [
+      { key: 'successfulDribbles', label: 'Times dribbled past defender', min: 0, max: 20, integer: true },
+    ],
+    calculateElo: (values) => calculateOutOf20Elo(values.successfulDribbles),
+  },
+  {
+    key: 'defending',
+    label: 'Defending',
+    shortLabel: 'Defending',
+    table: 'defending_scores',
+    description: 'Ranks how often a player stops an attacker in 20 defensive attempts.',
+    fields: [
+      { key: 'successfulDefenses', label: 'Times defended attacker', min: 0, max: 20, integer: true },
+    ],
+    calculateElo: (values) => calculateOutOf20Elo(values.successfulDefenses),
   },
 ]
 

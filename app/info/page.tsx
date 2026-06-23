@@ -50,19 +50,19 @@ const measurements = [
   {
     title: 'Dribbling',
     summary:
-      'Dribbling rankings are coming soon once the test route and scoring format are finalized.',
+      'Dribbling measures how often a player can get past a defender.',
     details: [
-      'This category is visible now so players know it is planned.',
-      'Scores will not be ranked until the test is ready.',
+      'Players get 20 attempts to dribble past a defender.',
+      'More successful dribbles produce a higher ELO score.',
     ],
   },
   {
     title: 'Defending',
     summary:
-      'Defending rankings are coming soon once the challenge format and scoring model are finalized.',
+      'Defending measures how often a player can stop an attacker.',
     details: [
-      'This category is visible now so players know it is planned.',
-      'Scores will not be ranked until the test is ready.',
+      'Players get 20 attempts to defend against an attacker.',
+      'More successful defensive stops produce a higher ELO score.',
     ],
   },
 ]
